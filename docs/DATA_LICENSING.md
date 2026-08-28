@@ -73,9 +73,6 @@ WoonLens policy:
 - Download directory: <https://data.rivm.nl/data/luchtmeetnet/>
 - Dataset documentation:
   <https://data.rivm.nl/data/luchtmeetnet/readme.pdf>
-- The documentation describes access as a free service from which no rights
-  can be derived and explains that datasets may be corrected, changed, or
-  withdrawn.
 - Current-year measurements can be provisionally validated and are not the
   same as the ratified historical datasets in `Vastgesteld-jaar`.
 - The reviewed documentation does not state a single general open-data license
