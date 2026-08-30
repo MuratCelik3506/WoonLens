@@ -26,7 +26,8 @@ responses.
 
 | Source | Live result | What was verified |
 | --- | --- | --- |
-| PDOK Locatieserver | `200 OK` | Suggestion and lookup flow; BAG and area identifiers |
+| PDOK Location API | `200 OK` | Address search, UUID, display value, and CRS84 point |
+| PDOK BAG address detail | `200 OK` | Number designation and addressable-object identifiers |
 | Kadaster BAG OGC API | `200 OK` | Residential-unit schema and building relation |
 | EP-Online Public REST API v5 | `200 OK` | Authenticated array response and BAG join fields |
 | CBS StatLine OData v4 | `200 OK` | Dataset entities, measure metadata, and units |
@@ -34,7 +35,7 @@ responses.
 
 Official references:
 
-- [PDOK Locatieserver](https://www.pdok.nl/introductie/-/article/pdok-locatieserver-1)
+- [PDOK Location API](https://www.pdok.nl/location-api1)
 - [Kadaster BAG OGC API](https://api.pdok.nl/kadaster/bag/ogc/v2?f=html&lang=en)
 - [EP-Online Public REST API v5](https://public.ep-online.nl/swagger/index.html)
 - [CBS OData v4 metadata guide](https://www.cbs.nl/nl-nl/onze-diensten/open-data/statline-als-open-data/metadata-odata-v4)
@@ -50,17 +51,15 @@ term will never change.
 What the user types
         |
         v
-PDOK Suggest ---- user confirms the intended address
+PDOK Location search ---- user confirms the intended address
         |
         v
-PDOK Lookup
+PDOK BAG address detail
         |
         +---- BAG addressable-object ID -------------------+
         |                                                  |
         +---- BAG address ID                               |
         |                                                  v
-        +---- neighbourhood code                    EP-Online label
-        |                                                  |
         +---- coordinates                                  |
         |                                                  |
         v                                                  |
@@ -69,7 +68,8 @@ Kadaster BAG residential unit ---- building relation -----+
         v                                                  |
 Official property facts                                   |
                                                            |
-neighbourhood code ---> CBS geometry + StatLine statistics|
+coordinates ---------> CBS spatial join -> neighbourhood  |
+                                      -> StatLine statistics|
                                                            |
 coordinates ---------> compatible monitoring station      |
                               |                            |
@@ -82,7 +82,7 @@ Transient normalized view -> validation rules -> live comparison -> optional dow
 ```
 
 The addressable-object ID is the strongest cross-source property join in the
-initial chain. The neighbourhood code and coordinates lead to contextual data,
+initial chain. Coordinates lead to contextual spatial joins; those results are
 not additional facts about the individual home.
 
 ## Chapter 1 — A Person Types an Address
@@ -97,31 +97,33 @@ This is not yet a safe database key. It might refer to `42`, `42A`, another
 suffix, or an address written with a different spelling. WoonLens therefore
 does not parse the text and guess.
 
-Instead, it calls the PDOK Locatieserver Suggest endpoint:
+Instead, it calls the current PDOK Location API search endpoint and restricts
+the search to address collection version 1:
 
 ```http
-GET https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest
+GET https://api.pdok.nl/kadaster/location-api/v1/search
     ?q=Witte%20de%20Withstraat%2042%20Rotterdam
-    &fq=type:adres
-    &rows=5
+    &adres[version]=1
+    &limit=5
+    &f=json
 ```
 
 ### What WoonLens asks for
 
-- The user's partial address text in `q`
-- Only address results with `fq=type:adres`
+- The user's partial address text in `q`, between 2 and 200 characters
+- Only address collection version 1 with `adres[version]=1`
 - A small result set suitable for an autocomplete list
 
 ### What comes back
 
-The suggestion response contains lightweight search results. A result includes
-fields such as:
+The search response contains lightweight GeoJSON features. A result includes:
 
-- `id`: a temporary PDOK lookup identifier
-- `weergavenaam`: the human-readable address
-- `type`: the result type
-- `adrestype`: main or secondary address information
-- `score`: search relevance
+- `id`: the UUID of the linked BAG OGC address feature
+- `properties.display_name`: the human-readable address
+- `properties.collection_id` and `collection_version`
+- `geometry`: a CRS84 point
+- `properties.score`: search relevance, which WoonLens does not expose as a
+  quality or property score
 
 The live check returned four matching suggestions for the example query. This
 is why WoonLens must show the options and let the user choose. A relevance
@@ -129,44 +131,42 @@ score is not permission to silently replace `42` with `42A`.
 
 ### The first important rule
 
-The PDOK suggestion `id` is a short-lived provider reference for the next
-request. It is not the official BAG identifier and must not become the
-WoonLens property key.
+The result UUID is used only for the next live detail request. WoonLens does not
+persist it as a property record, does not expose the provider's detail URL, and
+does not silently select a top-ranked result.
 
 ## Chapter 2 — The Selection Receives Official Identifiers
 
-After the user selects a suggestion, WoonLens sends its PDOK result ID to the
-Lookup endpoint:
+After the user selects a suggestion, WoonLens validates the UUID and constructs
+a request against the fixed PDOK BAG address collection:
 
 ```http
-GET https://api.pdok.nl/bzk/locatieserver/search/v3_1/lookup
-    ?id=adr-9aeafa8b9136c5d880bab391906efebc
+GET https://api.pdok.nl/kadaster/bag/ogc/v2/collections/adres/items/
+    690240c0-fc13-59d9-8e98-2ef441237a54?f=json
 ```
 
-The lookup response turns the selected search result into an integration
-passport. For the verified example, the important identifiers are:
+The BAG address response turns the selected result into the initial integration
+passport:
 
 | Meaning | Source field | Verified example |
 | --- | --- | --- |
-| BAG address | `nummeraanduiding_id` | `0599200000508415` |
-| BAG addressable object | `adresseerbaarobject_id` | `0599010000295420` |
-| Neighbourhood | `buurtcode` | `BU05990112` |
-| District | `wijkcode` | `WK059901` |
-| Municipality | `gemeentecode` | `0599` |
-| Location | `centroide_ll` | WGS84 point |
+| BAG address | `identificatie` | `0599200000508415` |
+| BAG addressable object | `adresseerbaar_object_identificatie` | `0599010000295420` |
+| Address type | `adresseerbaar_object_type` | `Verblijfsobject` |
+| Location | `geometry.coordinates` | CRS84 longitude/latitude |
 
 These values open different doors:
 
 - `adresseerbaarobject_id` connects the address to the BAG residential unit
   and EP-Online registrations.
-- `nummeraanduiding_id` preserves the official address identity.
-- `buurtcode` connects the address to CBS neighbourhood datasets.
-- Coordinates support map display and spatial context such as monitoring
-  station selection.
+- `identificatie` preserves the official number-designation identity.
+- Coordinates support map display and later spatial context such as
+  neighbourhood and monitoring-station selection.
 
 All official identifiers are treated as strings in the transient model. Leading
 zeroes are part of the identity and must never be lost through integer
-conversion.
+conversion. District and neighbourhood codes are no longer claimed to come
+from address resolution; they require a later spatial/contextual join.
 
 ## Chapter 3 — BAG Describes the Registered Physical Object
 
@@ -303,8 +303,10 @@ Bulk ingestion and provider-history storage are outside the product scope.
 
 ## Chapter 5 — The Address Enters Its Neighbourhood
 
-The PDOK lookup result also provides `BU05990112`. This code is used to retrieve
-CBS neighbourhood geometry through PDOK:
+The current address-resolution response does not claim a CBS neighbourhood
+code. A later contextual-data use case must determine which published CBS
+neighbourhood geometry contains the address point, then use that returned code
+for statistics. For example, after that code has been established:
 
 ```http
 GET https://api.pdok.nl/cbs/wijken-en-buurten-2025/ogc/v1/
@@ -576,9 +578,11 @@ should not erase successfully retrieved official property facts.
 The implementation should keep one client per upstream responsibility:
 
 ```text
-PdokLocationClient
+PdokLocationSearchClient
     suggest_address(query)
-    lookup_address(provider_result_id)
+
+PdokBagAddressClient
+    resolve_address(address_uuid)
 
 BagClient
     get_residential_unit(bag_object_id)
@@ -607,7 +611,7 @@ about frontend presentation or silently join unrelated sources.
 
 ### Confirmed enough for the first vertical slice
 
-- Current PDOK Suggest and Lookup endpoints
+- Current PDOK Location API address search and BAG address-detail contracts
 - BAG residential-unit retrieval by official object ID
 - Following BAG building relations
 - EP-Online authentication and addressable-object query

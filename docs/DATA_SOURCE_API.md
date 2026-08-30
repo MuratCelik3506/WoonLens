@@ -9,12 +9,12 @@ The examples below use one real address throughout the complete chain.
 
 ## Verification Status
 
-**Test date:** 2026-08-28
+**Test date:** 2026-08-30
 **Test address:** Witte de Withstraat 42A, 3012BR Rotterdam
 
 | Step | Source | Result |
 | --- | --- | --- |
-| 1 | PDOK Locatieserver | `200 OK` — address and BAG identifiers returned |
+| 1 | PDOK Location API + BAG address detail | `200 OK` — address UUID, BAG identifiers, and CRS84 coordinates returned |
 | 2 | Kadaster BAG OGC API | `200 OK` — residential unit and building returned |
 | 3 | EP-Online v5 | `200 OK` — authenticated label and file metadata returned |
 | 4 | CBS/PDOK neighbourhood geometry | `200 OK` — neighbourhood returned |
@@ -33,9 +33,9 @@ The source chain is:
 
 ```text
 search text
-  -> PDOK result ID
-  -> PDOK lookup
-  -> BAG addressable-object ID + coordinates + neighbourhood code
+  -> PDOK Location API address UUID + coordinates
+  -> PDOK BAG address detail
+  -> BAG addressable-object ID
   -> BAG residential unit and building
   -> EP-Online energy-label registrations
   -> CBS neighbourhood geometry and statistics
@@ -67,61 +67,77 @@ again.
 
 ---
 
-## 1. PDOK Locatieserver
+## 1. PDOK Location API and BAG Address Detail
 
 **Purpose:** address autocomplete and conversion of a user-selected address to
 official BAG identifiers and coordinates.
 
-- [Official documentation](https://www.pdok.nl/restful-api/-/article/pdok-locatieserver-1)
-- [OpenAPI UI](https://api.pdok.nl/bzk/locatieserver/search/v3_1/ui/)
+- [Official product documentation](https://www.pdok.nl/location-api1)
+- [Location API OpenAPI](https://api.pdok.nl/kadaster/location-api/v1/api?f=html)
+- [BAG OGC API OpenAPI](https://api.pdok.nl/kadaster/bag/ogc/v2/api?f=html)
 - Authentication: none
+- Location API license: CC BY 4.0
+- BAG license: Public Domain Mark 1.0
 
 ### 1.1 Suggest an Address
 
 ```bash
 curl -sS --get \
-  'https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest' \
-  --data-urlencode 'q=Witte de Withstraat 42 Rotterdam' \
-  --data-urlencode 'fq=type:adres' \
-  --data-urlencode 'rows=3'
+  'https://api.pdok.nl/kadaster/location-api/v1/search' \
+  --data-urlencode 'q=Witte de Withstraat 42A Rotterdam' \
+  --data-urlencode 'adres[version]=1' \
+  --data-urlencode 'limit=5' \
+  --data-urlencode 'f=json'
 ```
 
 Verified first result:
 
 ```json
 {
-  "type": "adres",
-  "weergavenaam": "Witte de Withstraat 42A, 3012BR Rotterdam",
-  "adrestype": "hoofdadres",
-  "id": "adr-9aeafa8b9136c5d880bab391906efebc"
+  "id": "690240c0-fc13-59d9-8e98-2ef441237a54",
+  "properties": {
+    "collection_id": "adres",
+    "collection_version": 1,
+    "display_name": "Witte de Withstraat 42A, 3012BR Rotterdam, Rotterdam (Zuid-Holland)"
+  },
+  "geometry": {
+    "type": "Point",
+    "coordinates": [4.477563182494074, 51.91559870274542]
+  }
 }
 ```
 
-The suggestion `id` is used immediately by the lookup endpoint. It is not the
-canonical property identifier and must not become the primary database key.
+The search is restricted to `adres` collection version 1. The result UUID is a
+PDOK BAG OGC feature identifier; it is used transiently to request the selected
+address detail. It is not persisted as a WoonLens property record.
 
 ### 1.2 Resolve the Selected Address
 
 ```bash
-curl -sS --get \
-  'https://api.pdok.nl/bzk/locatieserver/search/v3_1/lookup' \
-  --data-urlencode 'id=adr-9aeafa8b9136c5d880bab391906efebc'
+curl -sS \
+  'https://api.pdok.nl/kadaster/bag/ogc/v2/collections/adres/items/690240c0-fc13-59d9-8e98-2ef441237a54?f=json'
 ```
 
 Verified identifiers:
 
 ```json
 {
-  "weergavenaam": "Witte de Withstraat 42A, 3012BR Rotterdam",
-  "postcode": "3012BR",
-  "huisnummer": 42,
-  "huisletter": "A",
-  "nummeraanduiding_id": "0599200000508415",
-  "adresseerbaarobject_id": "0599010000295420",
-  "buurtcode": "BU05990112",
-  "wijkcode": "WK059901",
-  "gemeentecode": "0599",
-  "centroide_ll": "POINT(4.47756318 51.9155987)"
+  "id": "690240c0-fc13-59d9-8e98-2ef441237a54",
+  "properties": {
+    "identificatie": "0599200000508415",
+    "adresseerbaar_object_identificatie": "0599010000295420",
+    "adresseerbaar_object_type": "Verblijfsobject",
+    "openbare_ruimte_naam": "Witte de Withstraat",
+    "huisnummer": "42",
+    "huisletter": "A",
+    "toevoeging": null,
+    "postcode": "3012BR",
+    "woonplaats_naam": "Rotterdam"
+  },
+  "geometry": {
+    "type": "Point",
+    "coordinates": [4.477563182494074, 51.91559870274542]
+  }
 }
 ```
 
@@ -129,33 +145,31 @@ Verified identifiers:
 
 | Source field | Internal field | Handling |
 | --- | --- | --- |
-| `id` | `provider_result_id` | Temporary lookup reference |
-| `weergavenaam` | `display_address` | Display value; do not parse identifiers from it |
-| `nummeraanduiding_id` | `bag_address_id` | Retain as a zero-preserving string in the response |
-| `adresseerbaarobject_id` | `bag_object_id` | Canonical residential-object join key |
-| `openbareruimte_id` | `bag_public_space_id` | Retain as a string in the response |
-| `postcode` | `postal_code` | Uppercase and remove spaces for matching |
-| `huisnummer` | `house_number` | Integer |
-| `huisletter` | `house_letter` | Nullable string |
-| `huisnummertoevoeging` | `house_number_suffix` | Nullable string |
-| `straatnaam` | `street_name` | Unicode string |
-| `woonplaatsnaam` | `locality_name` | Unicode string |
-| `buurtcode` | `neighbourhood_code` | CBS neighbourhood join key |
-| `wijkcode` | `district_code` | CBS district join key |
-| `gemeentecode` | `municipality_code` | Prefix with `GM` only for CBS datasets that require it |
-| `provinciecode` | `province_code` | Retain as returned in the response |
-| `centroide_ll` | `location_wgs84` | Parse WKT as longitude/latitude, EPSG:4326 |
-| `centroide_rd` | `location_rd` | Parse WKT as Rijksdriehoek coordinates |
-| `gekoppeld_perceel` | raw only | Not required in the MVP report |
-| `rdf_seealso` | `source_uri` | Provenance link |
+| Search `id` | `id` | UUID used only to resolve the selected address |
+| Search `display_name` | `display_name` | Display value; never parse identifiers from it |
+| Search `geometry.coordinates` | `coordinates` | Longitude then latitude with explicit CRS84 |
+| BAG `identificatie` | `number_designation_id` | Zero-preserving official BAG address identifier |
+| BAG `adresseerbaar_object_identificatie` | `addressable_object_id` | Zero-preserving downstream property join key |
+| BAG `adresseerbaar_object_type` | `addressable_object_type` | Retain provider meaning |
+| BAG `openbare_ruimte_naam` | `street` | Unicode string |
+| BAG `huisnummer` | `house_number` | Retain as returned string |
+| BAG `huisletter` | `house_letter` | Nullable string |
+| BAG `toevoeging` | `house_number_suffix` | Nullable string |
+| BAG `postcode` | `postal_code` | Retain official compact form |
+| BAG `woonplaats_naam` | `city` | Unicode string |
 
 ### Validation
 
-- Accept only results where `type == "adres"`.
-- Require a 16-digit `adresseerbaarobject_id` for residential-unit workflows.
+- Require collection `adres`, collection version 1, feature type `Feature`, and
+  point geometry from the search contract.
+- Require a valid UUID and exact UUID equality in the resolved BAG feature.
+- Construct the BAG detail request from the configured HTTPS base URL and UUID;
+  never follow an arbitrary URL from a client or payload.
 - Keep leading zeroes in every BAG code.
-- Return the user to suggestions when multiple address variants exist.
-- Do not automatically replace `42` with `42A`; the user must select a result.
+- Return all bounded suggestions for user confirmation; do not silently select
+  or replace an address variant.
+- Treat missing required fields, wrong collection versions, invalid geometry,
+  or inconsistent result counts as provider-contract errors.
 
 ---
 

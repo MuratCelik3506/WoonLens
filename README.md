@@ -47,7 +47,7 @@ recommendation.
 
 | Source | Planned use |
 | --- | --- |
-| [PDOK Locatieserver](https://www.pdok.nl/restful-api/-/article/pdok-locatieserver-1) | Address resolution, BAG identifiers, and coordinates |
+| [PDOK Location API](https://www.pdok.nl/location-api1) | Address search and links to official BAG address records |
 | [Kadaster BAG](https://api.pdok.nl/kadaster/bag/ogc/v2/api?f=html) | Building and residential-unit records |
 | [EP-Online](https://public.ep-online.nl/swagger/index.html) | Registered energy-performance data |
 | [CBS Open Data](https://www.cbs.nl/en-gb/our-services/open-data) | Neighbourhood and housing statistics |
@@ -98,6 +98,18 @@ quality gate in the same container environment:
 ```bash
 docker compose --profile tools run --build --rm check
 ```
+
+The first live-data vertical slice exposes transient official-address search
+and resolution:
+
+```http
+GET /api/v1/addresses/suggest?q=Witte%20de%20Withstraat%2042A%20Rotterdam
+GET /api/v1/addresses/resolve?id=690240c0-fc13-59d9-8e98-2ef441237a54
+```
+
+WoonLens uses the current PDOK Location API for search and the PDOK BAG OGC API
+for the selected address detail. Requests and responses are not persisted or
+cached, and address query strings are excluded from application access logs.
 
 The project is currently in the Guest Live Comparison foundation phase. The
 backend runtime and health contract are implemented; provider integrations and

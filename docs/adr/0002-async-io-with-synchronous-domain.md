@@ -32,8 +32,8 @@ boundaries while keeping domain logic synchronous and side-effect free.
 ## Execution Shape
 
 ```text
-PDOK suggest -> user selection -> PDOK lookup
-                                      |
+PDOK Location search -> user selection -> PDOK BAG address detail
+                                                |
                                       +--> BAG unit -> BAG building(s)
                                       +--> EP-Online
                                       +--> CBS geometry

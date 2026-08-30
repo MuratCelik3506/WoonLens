@@ -1,0 +1,119 @@
+from datetime import datetime
+from typing import Annotated, Self, cast
+from uuid import UUID
+
+from fastapi import APIRouter, Query, Request
+from pydantic import BaseModel
+
+from woonlens.application.services.addresses import AddressService
+from woonlens.domain.addresses import (
+    AddressSuggestion,
+    Coordinates,
+    ResolvedAddress,
+    SourceMetadata,
+)
+
+router = APIRouter(prefix="/addresses", tags=["addresses"])
+
+
+class CoordinatesResponse(BaseModel):
+    longitude: float
+    latitude: float
+    crs: str
+
+    @classmethod
+    def from_domain(cls, coordinates: Coordinates) -> Self:
+        return cls(
+            longitude=coordinates.longitude,
+            latitude=coordinates.latitude,
+            crs=coordinates.crs,
+        )
+
+
+class SourceResponse(BaseModel):
+    provider: str
+    dataset: str
+    retrieved_at: datetime
+    license: str
+
+    @classmethod
+    def from_domain(cls, source: SourceMetadata) -> Self:
+        return cls(
+            provider=source.provider,
+            dataset=source.dataset,
+            retrieved_at=source.retrieved_at,
+            license=source.license_name,
+        )
+
+
+class AddressSuggestionResponse(BaseModel):
+    id: UUID
+    display_name: str
+    coordinates: CoordinatesResponse
+    source: SourceResponse
+
+    @classmethod
+    def from_domain(cls, suggestion: AddressSuggestion) -> Self:
+        return cls(
+            id=suggestion.id,
+            display_name=suggestion.display_name,
+            coordinates=CoordinatesResponse.from_domain(suggestion.coordinates),
+            source=SourceResponse.from_domain(suggestion.source),
+        )
+
+
+class AddressSuggestionsResponse(BaseModel):
+    items: list[AddressSuggestionResponse]
+
+
+class ResolvedAddressResponse(BaseModel):
+    id: UUID
+    number_designation_id: str
+    addressable_object_id: str
+    addressable_object_type: str
+    street: str
+    house_number: str
+    house_letter: str | None
+    house_number_suffix: str | None
+    postal_code: str
+    city: str
+    coordinates: CoordinatesResponse
+    source: SourceResponse
+
+    @classmethod
+    def from_domain(cls, address: ResolvedAddress) -> Self:
+        return cls(
+            id=address.id,
+            number_designation_id=address.number_designation_id,
+            addressable_object_id=address.addressable_object_id,
+            addressable_object_type=address.addressable_object_type,
+            street=address.street,
+            house_number=address.house_number,
+            house_letter=address.house_letter,
+            house_number_suffix=address.house_number_suffix,
+            postal_code=address.postal_code,
+            city=address.city,
+            coordinates=CoordinatesResponse.from_domain(address.coordinates),
+            source=SourceResponse.from_domain(address.source),
+        )
+
+
+def get_address_service(request: Request) -> AddressService:
+    return cast(AddressService, request.app.state.address_service)
+
+
+@router.get("/suggest", response_model=AddressSuggestionsResponse)
+async def suggest_addresses(
+    request: Request,
+    q: Annotated[str, Query(min_length=2, max_length=200)],
+) -> AddressSuggestionsResponse:
+    suggestions = await get_address_service(request).suggest(q)
+    return AddressSuggestionsResponse(
+        items=[AddressSuggestionResponse.from_domain(item) for item in suggestions]
+    )
+
+
+@router.get("/resolve", response_model=ResolvedAddressResponse)
+async def resolve_address(request: Request, id: UUID) -> ResolvedAddressResponse:
+    address = await get_address_service(request).resolve(id)
+    return ResolvedAddressResponse.from_domain(address)

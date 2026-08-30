@@ -30,7 +30,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=2)"]
 
-CMD ["uvicorn", "woonlens.entrypoints.api:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "woonlens.entrypoints.api:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
 
 FROM builder AS development
 COPY tests ./tests
@@ -40,4 +40,4 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     WOONLENS_ENVIRONMENT=development \
     WOONLENS_LOG_LEVEL=DEBUG
-CMD ["uvicorn", "woonlens.entrypoints.api:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "woonlens.entrypoints.api:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--reload", "--no-access-log"]

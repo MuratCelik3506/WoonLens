@@ -17,6 +17,16 @@ specific dataset terms have been checked and redistribution is clearly allowed.
 
 ## Source summary
 
+### PDOK Location API
+
+- Official service: <https://api.pdok.nl/kadaster/location-api/v1?f=html>
+- The service metadata identifies the license as Creative Commons Attribution
+  4.0.
+- Authentication and usage fees are not required.
+- WoonLens responses identify PDOK, the Location API address collection,
+  retrieval time, and license; they do not expose raw payloads or upstream
+  detail links.
+
 ### Kadaster BAG through PDOK
 
 - Official service: <https://api.pdok.nl/kadaster/bag/ogc/v2?f=html&lang=en>
