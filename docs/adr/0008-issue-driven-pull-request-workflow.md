@@ -150,10 +150,10 @@ pull request and must be documented.
 Initial milestones are:
 
 1. `v0.1 — Repository Foundation`
-2. `v0.2 — CLI Property Snapshot`
+2. `v0.2 — CLI Live Property View`
 3. `v0.3 — Comparison Engine`
-4. `v0.4 — Evidence Reports`
-5. `v0.5 — Local Web Application`
+4. `v0.4 — Comparison Downloads`
+5. `v0.5 — Web Application`
 6. `v1.0 — First Public Release`
 
 An Issue belongs to the milestone whose exit criteria it advances. A milestone

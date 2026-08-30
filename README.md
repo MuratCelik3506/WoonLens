@@ -1,6 +1,6 @@
 # WoonLens
 
-> Local-first Dutch housing comparison and data audit tool built on official public data.
+> Privacy-first Dutch housing comparison tool built on live official public data.
 
 [![Status](https://img.shields.io/badge/status-foundation-informational)](#development-status)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -25,20 +25,23 @@ recommendation.
 - Detect field-level differences and possible conflicts between registers
 - Explain different measurement scopes, such as registered BAG area versus
   EP-Online thermal-zone area
-- Preserve source timestamps, provenance, missing values, and data status
-- Track changes between reproducible property snapshots
-- Export a source-backed evidence report as JSON and PDF
-- Run locally with the user's own API credentials
+- Preserve source timestamps, provenance, missing values, and data status in
+  each live comparison response
+- Export the current source-backed comparison as JSON and PDF without retaining
+  it on the server
+- Work without an account, with optional accounts for saved searches,
+  favourites, and comparison lists
+- Re-fetch official data whenever a saved comparison is opened
 
 ## Product principles
 
 1. **Official sources first** — every fact must point back to its dataset.
 2. **No invented certainty** — missing or conflicting data remains visible.
 3. **Explain differences** — not every unequal value is a data error.
-4. **Local-first privacy** — no user account or address-search logging is
-   required for the self-hosted application.
-5. **Reproducible output** — reports include query time, source, version, and
-   transformation details.
+4. **Data minimisation** — provider responses and derived property facts are
+   processed in memory and are not persisted by WoonLens.
+5. **Optional identity** — comparison works without an account; accounts store
+   only user-owned search organisation data, never provider facts.
 
 ## Initial data sources
 
@@ -56,16 +59,17 @@ recommendation.
 Address input
     -> address resolution
     -> source-specific API clients
-    -> normalized property snapshot
+    -> transient normalized property view
     -> validation and conflict rules
-    -> comparison and change history
-    -> JSON/PDF evidence report
+    -> live comparison
+    -> optional JSON/PDF download
 ```
 
 The proposed implementation uses Python and FastAPI for the backend, PostgreSQL
-with PostGIS for geospatial storage, and TypeScript with Next.js for the web
-interface. These choices remain subject to validation during the first vertical
-slice.
+for optional accounts and saved-search references, and TypeScript with Next.js
+for the web interface. Provider payloads and derived property facts are not
+stored in PostgreSQL. These choices remain subject to validation during the
+first vertical slice.
 
 ## Scope boundaries
 
@@ -81,6 +85,8 @@ and delivered with one branch and pull request per task.
 
 The detailed MVP boundaries, delivery phases, quality requirements, and GitHub
 work structure are defined in the [project scope](docs/PROJECT_SCOPE.md).
+The [product feature map](docs/PRODUCT_FEATURE_MAP.md) connects guest and
+account journeys to screens, backend use cases, and delivery phases.
 
 The [data journey](docs/DATA_JOURNEY.md) explains how an address moves through
 PDOK, BAG, EP-Online, CBS, and Luchtmeetnet, including joins, uncertainty, and
@@ -109,9 +115,9 @@ separately before data ingestion is released.
 
 1. Complete repository documentation, security, and licensing foundations.
 2. Build a tested command-line vertical slice for one Dutch address.
-3. Normalize and compare snapshots from the first official data sources.
+3. Normalize and compare live responses from the first official data sources.
 4. Implement explainable cross-register validation rules.
-5. Generate reproducible JSON and PDF evidence reports.
+5. Generate source-attributed JSON and PDF downloads without server retention.
 6. Add the local web interface, maps, automated tests, and release workflow.
 
 Contributions will be welcome once the initial architecture and contribution

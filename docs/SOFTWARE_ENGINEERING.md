@@ -98,7 +98,7 @@ Application use cases and ports
       v
 Domain models, provenance, and rules
 
-Concrete source, persistence, and report adapters
+Concrete source, account persistence, and report-streaming adapters
       |
       +---- implement application ports
       +---- map external models into internal models
@@ -113,7 +113,7 @@ database drivers, environment loaders, or provider-specific response models.
 src/woonlens/
   domain/          # Provider-independent models and rules
   application/     # Use cases, orchestration, commands, queries, ports
-  adapters/        # Source APIs, persistence, and report implementations
+  adapters/        # Source APIs, account persistence, and report streaming
   entrypoints/     # FastAPI and CLI transport concerns
   bootstrap/       # Explicit dependency construction and startup
 ```
@@ -126,7 +126,7 @@ to application services and operate through declared ports.
 
 - Architecture boundaries will be checked by automated import rules.
 - Provider payloads will not be exposed directly through public API responses.
-- Persistence models will remain separate from domain models unless an explicit
+- Account persistence models remain separate from domain models unless an explicit
   decision demonstrates that combining them is safe.
 - New networked services will require evidence of independent scaling,
   availability, security, release, or ownership requirements.
@@ -241,28 +241,32 @@ WoonLens uses `structlog` with Python standard logging integration.
 
 Logs exclude credentials, authentication headers, signed URLs, raw bodies,
 address text, postal codes, house numbers, property identifiers, reports, and
-snapshot payloads by default. Redaction happens before serialization.
+transient comparison payloads by default. Redaction happens before
+serialization.
 
 ## 6. Data and Provenance Contracts
 
 ### Decision
 
-WoonLens uses immutable, provider-independent domain contracts with field-level
-provenance. The detailed contract is recorded in
-[`ADR 0005`](adr/0005-immutable-data-contracts-and-field-provenance.md).
+WoonLens uses immutable, provider-independent, request-scoped domain contracts
+with field-level provenance. The original contract is recorded in
+[`ADR 0005`](adr/0005-immutable-data-contracts-and-field-provenance.md) and its
+stateless correction in
+[`ADR 0009`](adr/0009-stateless-provider-data-and-optional-accounts.md).
 
 - Domain entities and value objects use frozen dataclasses and enums.
 - Provider payloads use adapter-local Pydantic models.
-- Persistence models and public API schemas remain separate.
-- Raw provider responses and normalized evidence are separate records.
+- Optional account models and public API schemas remain separate.
+- Raw provider responses and normalized evidence remain separate in memory and
+  are discarded after the request.
 - Explicit, tested mappers connect every boundary.
 
-### Snapshot contract
+### Transient property-view contract
 
-`PropertySnapshot` is immutable after creation. A refresh creates a new
-snapshot rather than mutating historical evidence. It contains address
+`TransientPropertyView` is immutable during a request. It contains address
 identity, property and energy facts, neighbourhood and environmental context,
-source records, validation results, and an explicit schema version.
+source metadata, validation results, and an explicit response-schema version.
+It has no persistence identity or historical lifecycle.
 
 Every normalized fact uses a `SourcedValue[T]` carrying its value state, unit,
 source reference, reference period, retrieval time, source status, and
@@ -287,9 +291,16 @@ changes of required fields produce a `SourceContractError`. Unknown source enum
 values are retained for review instead of being silently mapped to an unrelated
 internal value.
 
-Snapshots retain independent schema, adapter-contract, transformation, rule,
-and report versions. Raw payload retention and physical storage require a
-separate decision before persistence implementation.
+Live responses retain independent response-schema, adapter-contract,
+transformation, rule, and download-schema versions. Provider payloads,
+normalized facts, comparison results, and generated reports are not persisted.
+
+### Persistence boundary
+
+PostgreSQL may store optional accounts and minimum user-owned saved-search,
+favourite, and comparison references. Opening a saved item always invokes the
+live provider pipeline. The exact account reference schema, retention, consent,
+and deletion contract require a separate decision before implementation.
 
 ## 7. Testing Strategy
 
@@ -313,7 +324,7 @@ credentials, or a developer's `.env` file.
 - `Hypothesis` for property-based tests
 - `import-linter` for architecture boundaries
 - `pytest-cov` and `coverage.py` for line and branch coverage
-- Disposable PostgreSQL/PostGIS containers for persistence integration
+- Disposable PostgreSQL containers for optional account persistence integration
 
 ### Required coverage
 
@@ -428,9 +439,9 @@ conversations, and protection from force push and deletion. An independent
 approval is not required while the project has one maintainer. At least one
 approval becomes required when another active contributor joins.
 
-Initial milestones are `v0.1 — Repository Foundation`, `v0.2 — CLI Property
-Snapshot`, `v0.3 — Comparison Engine`, `v0.4 — Evidence Reports`, `v0.5 — Local
-Web Application`, and `v1.0 — First Public Release`.
+Initial milestones are `v0.1 — Repository Foundation`, `v0.2 — CLI Live Property
+View`, `v0.3 — Comparison Engine`, `v0.4 — Comparison Downloads`, `v0.5 — Web
+Application`, and `v1.0 — First Public Release`.
 
 ## 10. Definition of Done
 
@@ -465,10 +476,11 @@ request is not completion.
 - Missing data remains distinct from zero, empty, and not applicable.
 - Property, neighbourhood, municipality, and monitoring-station facts are
   labelled at their actual level.
-- Raw source records and normalized evidence remain separate.
+- Raw provider payloads and normalized facts remain separate in memory and
+  neither is persisted after the request.
 - Validation results reference rather than overwrite source evidence.
-- License, attribution, storage, retention, and redistribution implications are
-  reviewed for affected data.
+- License, attribution, transient processing, and redistribution implications
+  are reviewed for affected data.
 
 ### Tests and verification
 
@@ -542,5 +554,5 @@ particular, the following are not acceptable completion states:
 ## Decisions Still to Define
 
 The initial engineering foundation is complete. New decisions will be added as
-implementation introduces concrete persistence, raw-retention, reporting,
-deployment, and operational requirements.
+implementation introduces account persistence, report streaming, deployment,
+and operational requirements.

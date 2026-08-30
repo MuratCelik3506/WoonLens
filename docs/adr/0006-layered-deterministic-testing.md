@@ -82,7 +82,7 @@ Integration tests verify real boundaries under local control, including:
 - Database migrations
 - FastAPI dependency composition
 - Application orchestration with deterministic fake or recorded source ports
-- Report storage and retrieval
+- Optional account repository behaviour and streamed report generation
 
 Integration tests must create isolated state and clean it without relying on
 test execution order.
@@ -93,8 +93,8 @@ End-to-end tests exercise supported CLI and HTTP workflows through the composed
 application. External providers remain deterministic substitutes unless a test
 is explicitly marked live.
 
-They verify user-visible results, stable error shapes, exit codes, snapshot
-creation, and report generation.
+They verify user-visible results, stable error shapes, exit codes, transient
+property-view creation, and streamed report generation.
 
 ### Live smoke tests
 
