@@ -11,6 +11,7 @@ requires-python = ">=3.13,<3.14"
 license = { file = "LICENSE" }
 dependencies = [
   "fastapi>=0.116,<1",
+  "httpx>=0.28,<1",
   "pydantic-settings>=2.10,<3",
   "structlog>=25.4,<26",
   "uvicorn[standard]>=0.35,<1",
@@ -18,7 +19,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-  "httpx>=0.28,<1",
   "import-linter>=2.3,<3",
   "mypy>=1.17,<2",
   "pytest>=8.4,<9",

@@ -72,12 +72,14 @@ The MVP will:
 - Accept a Dutch address search query.
 - Return official address suggestions.
 - Require the user to select the correct address.
-- Resolve the selected address to official BAG, municipality, district, and
-  neighbourhood identifiers and geographic coordinates.
+- Resolve the selected address to official BAG address and addressable-object
+  identifiers plus geographic coordinates.
 - Preserve leading zeroes in official identifiers.
 - Avoid inferring an address variant without user confirmation.
 
-The primary source is PDOK Locatieserver.
+The primary search source is the current PDOK Location API. The selected result
+is resolved through the fixed PDOK BAG OGC API address collection. Municipality,
+district, and neighbourhood joins are separate contextual-data steps.
 
 ### 5.2 Property Data Retrieval
 
@@ -224,7 +226,7 @@ These items require separate scope approval before implementation.
 
 | Source | Purpose | Authentication |
 | --- | --- | --- |
-| PDOK Locatieserver | Address resolution and official identifiers | None |
+| PDOK Location API | Address search and official BAG address reference | None |
 | Kadaster BAG via PDOK | Residential-unit and building records | None |
 | EP-Online REST API | Energy-performance records | Personal API key |
 | CBS geometry via PDOK | Neighbourhood boundaries | None |

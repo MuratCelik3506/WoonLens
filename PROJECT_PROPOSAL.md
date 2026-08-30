@@ -70,7 +70,7 @@ is the evidence and reconciliation workflow:
 
 | Source | Purpose |
 | --- | --- |
-| PDOK Locatieserver | Address resolution, coordinates, and BAG identifiers |
+| PDOK Location API + BAG address detail | Address search, CRS84 coordinates, and official BAG identifiers |
 | Kadaster BAG | Buildings, residential units, registered area, usage, and construction year |
 | EP-Online | Registered energy-performance facts and thermal-zone measurements |
 | CBS Open Data | Neighbourhood-level housing and demographic context |
