@@ -27,6 +27,13 @@ class Settings(BaseSettings):
         "https://api.pdok.nl/cbs/gebiedsindelingen/ogc/v1"
     )
     cbs_administrative_dataset_year: int = Field(default=2026, ge=2000, le=2100)
+    cbs_statline_api_url: HttpUrl = HttpUrl("https://datasets.cbs.nl/odata/v1/CBS")
+    cbs_neighborhood_indicators_dataset_id: str = "85984NED"
+    cbs_neighborhood_indicators_dataset_year: int = Field(
+        default=2024,
+        ge=2000,
+        le=2100,
+    )
     http_connect_timeout_seconds: float = Field(default=2.0, gt=0)
     http_read_timeout_seconds: float = Field(default=5.0, gt=0)
     http_write_timeout_seconds: float = Field(default=2.0, gt=0)

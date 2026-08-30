@@ -5,6 +5,7 @@ from woonlens.application.errors import (
     AddressNotFoundError,
     AdministrativeContextNotFoundError,
     InvalidAddressQueryError,
+    NeighborhoodContextNotFoundError,
     SourceContractError,
     SourceRateLimitedError,
     SourceUnavailableError,
@@ -27,20 +28,25 @@ _PROBLEMS: dict[type[WoonLensError], tuple[int, str, str]] = {
         "Administrative context not found",
         "No current official administrative context covers the selected address.",
     ),
+    NeighborhoodContextNotFoundError: (
+        404,
+        "Neighbourhood context not found",
+        "No official neighbourhood context is available for the selected address.",
+    ),
     SourceRateLimitedError: (
         503,
-        "Address source temporarily busy",
-        "The official address source is temporarily busy. Try again later.",
+        "Official data source temporarily busy",
+        "An official data source is temporarily busy. Try again later.",
     ),
     SourceUnavailableError: (
         503,
-        "Address source unavailable",
-        "The official address source is temporarily unavailable.",
+        "Official data source unavailable",
+        "An official data source is temporarily unavailable.",
     ),
     SourceContractError: (
         502,
-        "Unexpected address source response",
-        "The official address source returned an incompatible response.",
+        "Unexpected official data response",
+        "An official data source returned an incompatible response.",
     ),
 }
 

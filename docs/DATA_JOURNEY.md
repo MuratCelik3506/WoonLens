@@ -399,9 +399,15 @@ assuming that the newest dataset is complete for every measure. The report
 must disclose the year attached to each metric. It must not silently combine
 different years under one generic “current” label.
 
-CBS OData responses can be paginated. The adapter must follow
-`@odata.nextLink`; otherwise a successful HTTP response may still produce an
-incomplete dataset.
+The first implemented slice intentionally pins all five selected measures to
+dataset `85984NED` (2024). It does not yet implement per-metric year selection.
+The public endpoint accepts only the address UUID, obtains the current official
+neighbourhood internally, and returns the 2024 dataset identity beside every
+result set. Boundary changes can therefore produce explicit missing values.
+
+CBS OData responses can be paginated. This implementation requests only five
+known measures with server-side filters. A next link in that bounded response
+is treated as a contract error; the adapter does not follow an arbitrary URL.
 
 ## Chapter 7 — Air Quality Comes From a Station, Not the Front Door
 

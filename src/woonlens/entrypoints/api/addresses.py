@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from woonlens.application.services.addresses import AddressService
 from woonlens.application.services.administrative import AdministrativeContextService
+from woonlens.application.services.indicators import NeighborhoodIndicatorsService
 from woonlens.domain.addresses import (
     AddressSuggestion,
     Coordinates,
@@ -14,6 +15,7 @@ from woonlens.domain.addresses import (
     SourceMetadata,
 )
 from woonlens.domain.administrative import AdministrativeArea, AdministrativeContext
+from woonlens.domain.indicators import NeighborhoodIndicator, NeighborhoodIndicators
 
 router = APIRouter(prefix="/addresses", tags=["addresses"])
 
@@ -127,6 +129,53 @@ class AdministrativeContextResponse(BaseModel):
         )
 
 
+class NeighborhoodIndicatorResponse(BaseModel):
+    key: str
+    measure_id: str
+    label: str
+    value: float | None
+    unit: str
+    source_unit: str
+    missing_reason: str | None
+
+    @classmethod
+    def from_domain(cls, indicator: NeighborhoodIndicator) -> Self:
+        return cls(
+            key=indicator.key,
+            measure_id=indicator.measure_id,
+            label=indicator.label,
+            value=indicator.value,
+            unit=indicator.unit,
+            source_unit=indicator.source_unit,
+            missing_reason=indicator.missing_reason,
+        )
+
+
+class NeighborhoodIndicatorsResponse(BaseModel):
+    level: str = "neighborhood"
+    neighborhood: AdministrativeAreaResponse
+    dataset_id: str
+    dataset_year: int
+    indicators: list[NeighborhoodIndicatorResponse]
+    source: SourceResponse
+
+    @classmethod
+    def from_domain(cls, result: NeighborhoodIndicators) -> Self:
+        neighborhood = AdministrativeAreaResponse.from_domain(result.neighborhood)
+        if neighborhood is None:
+            raise ValueError("neighborhood is required")
+        return cls(
+            neighborhood=neighborhood,
+            dataset_id=result.dataset_id,
+            dataset_year=result.dataset_year,
+            indicators=[
+                NeighborhoodIndicatorResponse.from_domain(indicator)
+                for indicator in result.indicators
+            ],
+            source=SourceResponse.from_domain(result.source),
+        )
+
+
 def get_address_service(request: Request) -> AddressService:
     return cast(AddressService, request.app.state.address_service)
 
@@ -137,6 +186,15 @@ def get_administrative_context_service(
     return cast(
         AdministrativeContextService,
         request.app.state.administrative_context_service,
+    )
+
+
+def get_neighborhood_indicators_service(
+    request: Request,
+) -> NeighborhoodIndicatorsService:
+    return cast(
+        NeighborhoodIndicatorsService,
+        request.app.state.neighborhood_indicators_service,
     )
 
 
@@ -169,3 +227,17 @@ async def resolve_administrative_context(
         address_id
     )
     return AdministrativeContextResponse.from_domain(context)
+
+
+@router.get(
+    "/{address_id}/neighborhood-indicators",
+    response_model=NeighborhoodIndicatorsResponse,
+)
+async def resolve_neighborhood_indicators(
+    request: Request,
+    address_id: UUID,
+) -> NeighborhoodIndicatorsResponse:
+    result = await get_neighborhood_indicators_service(request).resolve_for_address(
+        address_id
+    )
+    return NeighborhoodIndicatorsResponse.from_domain(result)
