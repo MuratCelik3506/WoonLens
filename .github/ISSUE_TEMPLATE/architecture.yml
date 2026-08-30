@@ -1,0 +1,80 @@
+name: Architecture decision
+description: Propose and evaluate a material technical decision that may require an ADR.
+title: "architecture: "
+labels: []
+assignees: []
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and problem
+      description: What forces, constraints, or risks require a decision now?
+    validations:
+      required: true
+
+  - type: textarea
+    id: decision_scope
+    attributes:
+      label: Decision scope
+      description: State exactly what will be decided and what remains outside this decision.
+    validations:
+      required: true
+
+  - type: textarea
+    id: options
+    attributes:
+      label: Viable options
+      description: List credible alternatives, including the status quo when relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: drivers
+    attributes:
+      label: Decision drivers and trade-offs
+      description: Compare correctness, complexity, security, privacy, operability, cost, reversibility, and maintainability.
+    validations:
+      required: true
+
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: Initial recommendation
+      description: State the preferred option and why, or explain what research is still needed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Data, security, operations, and migration impact
+      description: Describe consequences for stored evidence, compatibility, deployment, secrets, and existing users.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Decision acceptance criteria
+      description: What evidence or agreement is required before this Issue can close?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: adr
+    attributes:
+      label: ADR expected?
+      options:
+        - Yes — this is a durable architectural decision
+        - Possibly — decide after investigation
+        - No — explain why in the Issue
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and revisit conditions
+      description: Link related decisions and describe evidence that would justify revisiting the result.
+    validations:
+      required: true

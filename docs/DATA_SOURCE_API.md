@@ -1,0 +1,736 @@
+# WoonLens — Data Source API Guide
+
+This document defines the first verified integration path from one Dutch
+address to a normalized WoonLens property snapshot. The comparison layer runs
+this source chain independently for each selected address and compares the
+normalized snapshots; it does not compare unrelated raw API fields directly.
+
+The examples below use one real address throughout the complete chain.
+
+## Verification Status
+
+**Test date:** 2026-08-28
+**Test address:** Witte de Withstraat 42A, 3012BR Rotterdam
+
+| Step | Source | Result |
+| --- | --- | --- |
+| 1 | PDOK Locatieserver | `200 OK` — address and BAG identifiers returned |
+| 2 | Kadaster BAG OGC API | `200 OK` — residential unit and building returned |
+| 3 | EP-Online v5 | `200 OK` — authenticated label and file metadata returned |
+| 4 | CBS/PDOK neighbourhood geometry | `200 OK` — neighbourhood returned |
+| 5 | CBS StatLine OData | `200 OK` — housing and energy observations returned |
+| 6 | Luchtmeetnet Open API | `200 OK` — station metadata and hourly NO2 returned |
+
+No response examples in this document are invented. Signed download URLs and
+the project API key are intentionally excluded.
+
+Third-party licensing, attribution, and redistribution boundaries are tracked
+separately in [`DATA_LICENSING.md`](DATA_LICENSING.md).
+
+## Integration Contract
+
+The source chain is:
+
+```text
+search text
+  -> PDOK result ID
+  -> PDOK lookup
+  -> BAG addressable-object ID + coordinates + neighbourhood code
+  -> BAG residential unit and building
+  -> EP-Online energy-label registrations
+  -> CBS neighbourhood geometry and statistics
+  -> Luchtmeetnet station metadata and measurements
+  -> normalized WoonLens property snapshot
+```
+
+For a multi-address comparison, WoonLens repeats this chain for every address,
+stores each snapshot with its retrieval context, and then evaluates explicit
+comparison and audit rules.
+
+For every source, WoonLens must:
+
+1. preserve the unmodified response as a raw snapshot only when provider terms,
+   privacy rules, and the approved retention policy permit it; otherwise retain
+   safe retrieval metadata and an integrity checksum;
+2. validate required identifiers and value types;
+3. normalize only documented fields;
+4. retain source name, source URL, fetch time, and dataset year;
+5. represent unavailable values as `null`, never as zero;
+6. avoid deriving claims that the source does not support;
+7. preserve source definitions, reference dates, and provisional/ratified
+   status where available.
+
+---
+
+## 1. PDOK Locatieserver
+
+**Purpose:** address autocomplete and conversion of a user-selected address to
+official BAG identifiers and coordinates.
+
+- [Official documentation](https://www.pdok.nl/restful-api/-/article/pdok-locatieserver-1)
+- [OpenAPI UI](https://api.pdok.nl/bzk/locatieserver/search/v3_1/ui/)
+- Authentication: none
+
+### 1.1 Suggest an Address
+
+```bash
+curl -sS --get \
+  'https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest' \
+  --data-urlencode 'q=Witte de Withstraat 42 Rotterdam' \
+  --data-urlencode 'fq=type:adres' \
+  --data-urlencode 'rows=3'
+```
+
+Verified first result:
+
+```json
+{
+  "type": "adres",
+  "weergavenaam": "Witte de Withstraat 42A, 3012BR Rotterdam",
+  "adrestype": "hoofdadres",
+  "id": "adr-9aeafa8b9136c5d880bab391906efebc"
+}
+```
+
+The suggestion `id` is used immediately by the lookup endpoint. It is not the
+canonical property identifier and must not become the primary database key.
+
+### 1.2 Resolve the Selected Address
+
+```bash
+curl -sS --get \
+  'https://api.pdok.nl/bzk/locatieserver/search/v3_1/lookup' \
+  --data-urlencode 'id=adr-9aeafa8b9136c5d880bab391906efebc'
+```
+
+Verified identifiers:
+
+```json
+{
+  "weergavenaam": "Witte de Withstraat 42A, 3012BR Rotterdam",
+  "postcode": "3012BR",
+  "huisnummer": 42,
+  "huisletter": "A",
+  "nummeraanduiding_id": "0599200000508415",
+  "adresseerbaarobject_id": "0599010000295420",
+  "buurtcode": "BU05990112",
+  "wijkcode": "WK059901",
+  "gemeentecode": "0599",
+  "centroide_ll": "POINT(4.47756318 51.9155987)"
+}
+```
+
+### Field Processing
+
+| Source field | Internal field | Handling |
+| --- | --- | --- |
+| `id` | `provider_result_id` | Temporary lookup reference |
+| `weergavenaam` | `display_address` | Display value; do not parse identifiers from it |
+| `nummeraanduiding_id` | `bag_address_id` | Store as a zero-preserving string |
+| `adresseerbaarobject_id` | `bag_object_id` | Canonical residential-object join key |
+| `openbareruimte_id` | `bag_public_space_id` | Store as a string |
+| `postcode` | `postal_code` | Uppercase and remove spaces for matching |
+| `huisnummer` | `house_number` | Integer |
+| `huisletter` | `house_letter` | Nullable string |
+| `huisnummertoevoeging` | `house_number_suffix` | Nullable string |
+| `straatnaam` | `street_name` | Unicode string |
+| `woonplaatsnaam` | `locality_name` | Unicode string |
+| `buurtcode` | `neighbourhood_code` | CBS neighbourhood join key |
+| `wijkcode` | `district_code` | CBS district join key |
+| `gemeentecode` | `municipality_code` | Prefix with `GM` only for CBS datasets that require it |
+| `provinciecode` | `province_code` | Store as returned |
+| `centroide_ll` | `location_wgs84` | Parse WKT as longitude/latitude, EPSG:4326 |
+| `centroide_rd` | `location_rd` | Parse WKT as Rijksdriehoek coordinates |
+| `gekoppeld_perceel` | raw only | Not required in the MVP report |
+| `rdf_seealso` | `source_uri` | Provenance link |
+
+### Validation
+
+- Accept only results where `type == "adres"`.
+- Require a 16-digit `adresseerbaarobject_id` for residential-unit workflows.
+- Keep leading zeroes in every BAG code.
+- Return the user to suggestions when multiple address variants exist.
+- Do not automatically replace `42` with `42A`; the user must select a result.
+
+---
+
+## 2. Kadaster BAG OGC API
+
+**Purpose:** official residential-unit and building facts.
+
+- [Official OpenAPI specification](https://api.pdok.nl/kadaster/bag/ogc/v2/api?f=html)
+- Authentication: none
+- Format used: GeoJSON
+
+### 2.1 Fetch the Residential Unit
+
+```bash
+curl -sS --get \
+  'https://api.pdok.nl/kadaster/bag/ogc/v2/collections/verblijfsobject/items' \
+  --data-urlencode 'f=json' \
+  --data-urlencode 'identificatie=0599010000295420' \
+  --data-urlencode 'limit=10'
+```
+
+Verified result:
+
+```json
+{
+  "identificatie": "0599010000295420",
+  "status": "Verblijfsobject in gebruik",
+  "gebruiksdoel": "onderwijsfunctie,woonfunctie",
+  "oppervlakte": 62,
+  "postcode": "3012BR",
+  "huisnummer": 42,
+  "huisletter": "A",
+  "pand.href": [
+    "https://api.pdok.nl/kadaster/bag/ogc/v2/collections/pand/items/1a55ae8d-1fa9-5cc4-85e7-fda7f1e626d2"
+  ]
+}
+```
+
+### 2.2 Follow the Building Relation
+
+The `pand.href` value is an OGC feature URL, not the building's BAG
+identification. Follow it to retrieve the building record:
+
+```bash
+curl -sS --get \
+  'https://api.pdok.nl/kadaster/bag/ogc/v2/collections/pand/items/1a55ae8d-1fa9-5cc4-85e7-fda7f1e626d2' \
+  --data-urlencode 'f=json'
+```
+
+Verified building facts:
+
+```json
+{
+  "identificatie": "0599100000691863",
+  "bouwjaar": 1873,
+  "status": "Pand in gebruik",
+  "aantal_verblijfsobjecten": 4,
+  "gebruiksdoel": "onderwijsfunctie,winkelfunctie,woonfunctie"
+}
+```
+
+### Residential-Unit Field Processing
+
+| Source field | Internal field | Handling |
+| --- | --- | --- |
+| feature `id` | `bag_feature_id` | OGC feature identifier, separate from BAG ID |
+| `identificatie` | `bag_object_id` | Canonical join key |
+| `status` | `unit_status` | Preserve original Dutch value and optionally map to an enum |
+| `gebruiksdoel` | `usage_purposes` | Split comma-separated value into a deduplicated list |
+| `oppervlakte` | `registered_area_m2` | Integer; registered BAG area, not measured living area |
+| `geconstateerd` | `was_formally_observed` | Map `J/N` to boolean only after validation |
+| `documentdatum` | `source_document_date` | ISO date |
+| `documentnummer` | `source_document_number` | Provenance field |
+| `hoofdadres_identificatie` | `main_bag_address_id` | String join key |
+| address fields | normalized address fields | Cross-check against PDOK; BAG wins on conflict |
+| `pand.href` | `building_feature_urls` | Follow all relations; one unit can reference multiple buildings |
+| feature geometry | `unit_location` | Point in EPSG:4326 |
+| `rdf_seealso` | `source_uri` | Provenance link |
+
+### Building Field Processing
+
+| Source field | Internal field | Handling |
+| --- | --- | --- |
+| feature `id` | `bag_building_feature_id` | OGC feature identifier |
+| `identificatie` | `bag_building_id` | Canonical building identifier |
+| `bouwjaar` | `construction_year` | Integer; validate a plausible range |
+| `status` | `building_status` | Preserve original value |
+| `gebruiksdoel` | `building_usage_purposes` | Normalize to a list |
+| `aantal_verblijfsobjecten` | `residential_unit_count` | Integer |
+| `geconstateerd` | `was_formally_observed` | Validated `J/N` mapping |
+| `documentdatum` | `source_document_date` | ISO date |
+| `documentnummer` | `source_document_number` | Provenance field |
+| `verblijfsobject.href` | `unit_feature_urls` | Relationship list |
+| feature geometry | `building_footprint` | Polygon/MultiPolygon in EPSG:4326 |
+
+Do not label every BAG `oppervlakte` value as “living area.” A mixed-use unit
+can have multiple usage purposes, as the verified example demonstrates.
+
+---
+
+## 3. EP-Online Public REST API v5
+
+**Purpose:** official energy-label registrations.
+
+- [Official Swagger UI](https://public.ep-online.nl/swagger/index.html)
+- Authentication: API key in the `Authorization` header
+- Join key: 16-digit BAG addressable-object ID
+
+### Local Credential Setup
+
+The repository contains a committed `.env.example` and a Git-ignored `.env`.
+Add the personal production key only to `.env`:
+
+```dotenv
+WOONLENS_EP_ONLINE_API_KEY=your-personal-key
+```
+
+Never add the key to `.env.example`, source code, test fixtures, screenshots,
+issues, or documentation. Self-hosted users must obtain and configure their own
+key.
+
+### Request
+
+```bash
+curl -sS \
+  -H "Authorization: ${WOONLENS_EP_ONLINE_API_KEY}" \
+  'https://public.ep-online.nl/api/v5/PandEnergielabel/AdresseerbaarObject/0599010000295420'
+```
+
+Verified authenticated response summary:
+
+```json
+[
+  {
+    "Registratiedatum": "2026-02-04T15:31:59.943",
+    "Opnamedatum": "2026-01-14T00:00:00",
+    "Geldig_tot": "2036-01-14T00:00:00",
+    "Soort_opname": "Basisopname",
+    "Status": "Bestaand",
+    "Gebouwklasse": "Woningbouw",
+    "Gebouwtype": "Appartement",
+    "Gebouwsubtype": "Tussenmidden",
+    "BAGVerblijfsobjectID": "0599010000295420",
+    "BAGPandIDs": ["0599100000691863"],
+    "Bouwjaar": 1873,
+    "Gebruiksoppervlakte_thermische_zone": 54.41,
+    "Energieklasse": "B",
+    "Energiebehoefte": 109.02,
+    "PrimaireFossieleEnergie": 172.52,
+    "Aandeel_hernieuwbare_energie": 0.0,
+    "BerekendeCO2Emissie": 31.80,
+    "BerekendeEnergieverbruik": 172.51
+  }
+]
+```
+
+The equivalent address query also returned `200 OK` and the same single
+registration:
+
+```bash
+curl -sS --get \
+  -H "Authorization: ${WOONLENS_EP_ONLINE_API_KEY}" \
+  'https://public.ep-online.nl/api/v5/PandEnergielabel/Adres' \
+  --data-urlencode 'postcode=3012BR' \
+  --data-urlencode 'huisnummer=42' \
+  --data-urlencode 'huisletter=A'
+```
+
+The initial request without a key returned:
+
+```json
+{
+  "status": 401,
+  "title": "Unauthorized",
+  "detail": "Valid API key required to access this resource."
+}
+```
+
+The successful response is always modeled as an array of
+`PandEnergielabelV5` objects, including when only one registration exists.
+
+### File Metadata Endpoints
+
+Latest monthly total-file metadata:
+
+```bash
+curl -sS --get \
+  -H "Authorization: ${WOONLENS_EP_ONLINE_API_KEY}" \
+  'https://public.ep-online.nl/api/v5/Mutatiebestand/DownloadInfo' \
+  --data-urlencode 'fileType=csv'
+```
+
+Verified safe fields:
+
+```json
+{
+  "bestandsnaam": "v20260801_v4_csv.zip",
+  "geldigTotEnMet": "2026-08-29T21:05:55.3783303+02:00"
+}
+```
+
+Daily mutation-file metadata:
+
+```bash
+curl -sS --get \
+  -H "Authorization: ${WOONLENS_EP_ONLINE_API_KEY}" \
+  'https://public.ep-online.nl/api/v5/Mutatiebestand/DownloadInfo/2026-08-27'
+```
+
+Verified safe fields:
+
+```json
+{
+  "bestandsnaam": "d20260827_v4.zip",
+  "geldigTotEnMet": "2026-08-29T21:06:25.6717026+02:00"
+}
+```
+
+Both responses also contain a temporary signed `downloadUrl`. It must be used
+immediately by the ingestion worker and must never be committed, cached in a
+public response, or written to application logs. Valid total-file types are
+`xml`, `csv`, and `xlsx`.
+
+### Verified Error Behaviour
+
+| Scenario | Verified status | Adapter behaviour |
+| --- | ---: | --- |
+| Missing or inactive API key | `401` | Configuration/authentication error |
+| Invalid BAG ID format | `400` | Reject before calling the provider |
+| Valid-format unknown BAG ID | `404` | Return `energy_label: null` with a typed not-found reason |
+| Invalid address parameters | `400` | Reject before calling the provider |
+| Invalid mutation date format | `400` | Reject before calling the provider |
+| Removed daily mutation file | `404` | Trigger a new monthly snapshot workflow |
+
+`0000000000000000` is a dangerous legacy placeholder, not a safe unknown ID.
+The live API returned many unrelated historical registrations for it. WoonLens
+must reject this value locally and must verify that every returned
+`BAGVerblijfsobjectID` equals the requested non-placeholder BAG ID.
+
+### Complete v5 Field Processing Plan
+
+| Source field | Internal field or action |
+| --- | --- |
+| `Registratiedatum` | `registration_date` |
+| `Opnamedatum` | `inspection_date` |
+| `Geldig_tot` | `valid_until` |
+| `Certificaathouder` | `certificate_holder` |
+| `Soort_opname` | `assessment_type` |
+| `Status` | `registration_status` |
+| `Berekeningstype` | `calculation_method` |
+| `IsVereenvoudigdLabel` | `is_simplified_label` |
+| `Op_basis_van_referentiegebouw` | `uses_reference_building` |
+| `Gebouwklasse` | `building_class` |
+| `Gebouwtype` | `building_type` |
+| `Gebouwsubtype` | `building_subtype` |
+| `SBIcode` | `sbi_code` |
+| `Postcode` | Cross-check only; BAG remains canonical |
+| `Huisnummer` | Cross-check only |
+| `Huisletter` | Cross-check only |
+| `Huisnummertoevoeging` | Cross-check only |
+| `Detailaanduiding` | `building_detail` |
+| `BAGVerblijfsobjectID` | `bag_object_id` |
+| `BAGLigplaatsID` | `bag_berth_id` |
+| `BAGStandplaatsID` | `bag_pitch_id` |
+| `BAGPandIDs` | `bag_building_ids` |
+| `Bouwjaar` | Cross-check with BAG; retain both values on conflict |
+| `Gebruiksoppervlakte_thermische_zone` | `thermal_zone_area_m2` |
+| `Compactheid` | `compactness` |
+| `Energieklasse` | `energy_class` |
+| `EnergieIndex` | `energy_index` |
+| `EnergieIndex_EMG_forfaitair` | `energy_index_emg_default` |
+| `Energiebehoefte` | `energy_demand_kwh_m2_year` |
+| `PrimaireFossieleEnergie` | `primary_fossil_energy_kwh_m2_year` |
+| `Primaire_fossiele_energie_EMG_forfaitair` | `primary_fossil_energy_emg_default_kwh_m2_year` |
+| `Aandeel_hernieuwbare_energie` | `renewable_energy_share_pct` |
+| `Aandeel_hernieuwbare_energie_EMG_forfaitair` | `renewable_energy_share_emg_default_pct` |
+| `Temperatuuroverschrijding` | `summer_overheating_indicator` |
+| `Warmtebehoefte` | `heating_demand_kwh_m2_year` |
+| `Eis_energiebehoefte` | `required_max_energy_demand_kwh_m2_year` |
+| `Eis_primaire_fossiele_energie` | `required_max_primary_fossil_energy_kwh_m2_year` |
+| `Eis_aandeel_hernieuwbare_energie` | `required_min_renewable_energy_share_pct` |
+| `Eis_temperatuuroverschrijding` | `required_max_overheating_indicator` |
+| `BerekendeCO2Emissie` | `calculated_co2_kg_m2_year` |
+| `BerekendeEnergieverbruik` | `calculated_energy_use_kwh_m2_year` |
+
+All nullable fields must remain nullable. All returned registrations must be
+stored. For the displayed current label, first exclude expired registrations
+and records whose BAG ID does not match the request, then select the greatest
+`Registratiedatum`. Multiple-registration fixtures still need verification
+before this rule is treated as final.
+
+---
+
+## 4. CBS Neighbourhood Geometry via PDOK
+
+**Purpose:** retrieve the official neighbourhood boundary and basic indicators.
+
+- [Official OGC API](https://api.pdok.nl/cbs/wijken-en-buurten-2025/ogc/v1?f=html&lang=en)
+- Authentication: none
+- Join key: `buurtcode`
+
+### Request
+
+```bash
+curl -sS --get \
+  'https://api.pdok.nl/cbs/wijken-en-buurten-2025/ogc/v1/collections/buurten/items' \
+  --data-urlencode 'f=json' \
+  --data-urlencode 'buurtcode=BU05990112' \
+  --data-urlencode 'limit=1'
+```
+
+Verified result summary:
+
+```json
+{
+  "buurtcode": "BU05990112",
+  "buurtnaam": "Cool",
+  "gemeentecode": "GM0599",
+  "gemeentenaam": "Rotterdam",
+  "jaar": 2025,
+  "aantal_inwoners": 6625,
+  "aantal_huishoudens": 3930,
+  "bevolkingsdichtheid_inwoners_per_km2": 10865,
+  "geometry": "MultiPolygon omitted from this example"
+}
+```
+
+### Field Policy
+
+| Field group | Handling |
+| --- | --- |
+| Codes, names, `jaar`, and geometry | Store and expose |
+| Population, household count, density, land/water area | Store and expose with dataset year |
+| Postal code and address density | Store for context and validation |
+| Age, marital-status, and origin percentages | Preserve in the raw snapshot but exclude from the housing MVP |
+| Missing-value sentinels such as negative CBS codes | Convert to typed missing reasons, never display as numbers |
+
+The PDOK neighbourhood geometry is not the source for the complete WOZ and
+energy set. Those values come from CBS StatLine OData.
+
+---
+
+## 5. CBS StatLine OData
+
+**Purpose:** neighbourhood-level housing and energy indicators.
+
+- [CBS OData documentation](https://www.cbs.nl/nl-nl/onze-diensten/open-data/statline-als-open-data/metadata-odata-v4)
+- [2024 dataset](https://www.cbs.nl/nl-nl/cijfers/detail/85984NED)
+- Authentication: none
+
+### Why the 2024 Table Is Used Initially
+
+The 2025 table (`86165NED`) was tested first. For `BU05990112`, it returned the
+WOZ observation but no electricity, gas, electricity-return, or solar
+observations. The 2024 table (`85984NED`) returned all five selected metrics.
+
+WoonLens must therefore choose the latest complete year per metric, not assume
+that the newest dataset contains every measure.
+
+### Metadata Request
+
+CBS uses measure identifiers rather than descriptive property names. Fetch and
+store `MeasureCodes` before interpreting observations.
+
+```bash
+curl -sS --get \
+  'https://datasets.cbs.nl/odata/v1/CBS/85984NED/MeasureCodes' \
+  --data-urlencode \
+  "\$filter=contains(Title,'WOZ') or contains(Title,'elektriciteit') or contains(Title,'aardgas') or contains(Title,'zonnestroom')" \
+  --data-urlencode '$select=Identifier,Title,Unit'
+```
+
+### Observation Request
+
+```bash
+curl -sS --get \
+  'https://datasets.cbs.nl/odata/v1/CBS/85984NED/Observations' \
+  --data-urlencode \
+  "\$filter=WijkenEnBuurten eq 'BU05990112' and (Measure eq 'M001642' or Measure eq 'M000221_2' or Measure eq 'M008294' or Measure eq 'M000219_2' or Measure eq 'M008297')" \
+  --data-urlencode '$select=Measure,Value,ValueAttribute,WijkenEnBuurten'
+```
+
+Verified observations:
+
+| Measure | Meaning | Unit | Verified value |
+| --- | --- | --- | ---: |
+| `M001642` | Average residential WOZ value | EUR × 1,000 | 372 |
+| `M000221_2` | Average electricity delivery | kWh | 1,690 |
+| `M008294` | Average electricity returned | kWh | 10 |
+| `M000219_2` | Average natural-gas consumption | m³ | 140 |
+| `M008297` | Homes with solar power | % | 1 |
+
+These are neighbourhood statistics. The WOZ value must be presented as a
+neighbourhood average of EUR 372,000, never as the selected property's value.
+
+### Observation Processing
+
+- Join `Observations.Measure` to `MeasureCodes.Identifier`.
+- Store the source unit instead of hardcoding a unit in the frontend.
+- Interpret `Value` only together with `ValueAttribute`.
+- If an observation is absent, keep it absent; do not fall back to zero.
+- Store `dataset_id`, `dataset_year`, `measure_id`, and `fetched_at` with every
+  normalized metric.
+- Follow `@odata.nextLink` whenever a query is paginated.
+
+---
+
+## 6. Luchtmeetnet Open API
+
+**Purpose:** station metadata and recent hourly air-quality measurements.
+
+- [Official API documentation](https://api-docs.luchtmeetnet.nl/)
+- [Historical RIVM downloads](https://data.rivm.nl/data/luchtmeetnet/)
+- Authentication: none
+- Documented limit: 100 requests per five minutes
+- Documented refresh: hourly
+
+### 6.1 Fetch Station Metadata
+
+```bash
+curl -sS \
+  'https://api.luchtmeetnet.nl/open_api/stations/NL01487'
+```
+
+Verified station:
+
+```json
+{
+  "type": "Traffic",
+  "components": ["PM25", "NO", "FN", "PM10", "BCWB", "NO2"],
+  "geometry": {
+    "type": "point",
+    "coordinates": [4.48066, 51.89113]
+  },
+  "municipality": "Rotterdam",
+  "organisation": "DCMR (Rijnmond)",
+  "location": "Rotterdam-Pleinweg"
+}
+```
+
+### 6.2 Fetch Hourly Measurements
+
+```bash
+curl -sS --get \
+  'https://api.luchtmeetnet.nl/open_api/stations/NL01487/measurements' \
+  --data-urlencode 'formula=NO2' \
+  --data-urlencode 'order=timestamp_measured' \
+  --data-urlencode 'order_direction=desc' \
+  --data-urlencode 'page=1'
+```
+
+Verified first observation at test time:
+
+```json
+{
+  "value": 25.2,
+  "formula": "NO2",
+  "timestamp_measured": "2026-08-28T18:00:00+00:00",
+  "timestamp_measured_start": "2026-08-28T17:00:00+00:00",
+  "timestamp_measured_end": "2026-08-28T18:00:00+00:00"
+}
+```
+
+### Field Processing
+
+| Source field | Internal field | Handling |
+| --- | --- | --- |
+| station number | `station_id` | Stable provider identifier |
+| `location` | `station_name` | Display with organisation |
+| `organisation` | `station_operator` | Provenance |
+| `type` | `station_type` | Important context, e.g. traffic station |
+| `components` | `supported_components` | Use to prevent unsupported queries |
+| station geometry | `station_location` | Point in EPSG:4326 |
+| `formula` | `pollutant_code` | Preserve source code such as `NO2`, `PM10`, `PM25` |
+| `value` | `measured_value` | Nullable numeric value |
+| measurement timestamps | start/end/representative time | Parse as timezone-aware UTC timestamps |
+
+The API measurement response does not include a unit. WoonLens must verify and
+store units from official component or bulk-file metadata before showing them.
+
+Station observations are not address-level measurements. The report must show
+the station name, station type, distance from the address, and observation time.
+The selected station above proves the endpoint; a nearest-compatible-station
+catalogue must be implemented before production use.
+
+For long historical series, use the RIVM yearly downloads rather than paging
+through the current-measurement API.
+
+---
+
+## Normalized Report Shape
+
+The source adapters should eventually produce a response shaped like this:
+
+```json
+{
+  "address": {
+    "display_address": "Witte de Withstraat 42A, 3012BR Rotterdam",
+    "bag_address_id": "0599200000508415",
+    "bag_object_id": "0599010000295420",
+    "location": {"longitude": 4.47756318, "latitude": 51.9155987}
+  },
+  "property": {
+    "registered_area_m2": 62,
+    "usage_purposes": ["onderwijsfunctie", "woonfunctie"],
+    "buildings": [
+      {
+        "bag_building_id": "0599100000691863",
+        "construction_year": 1873,
+        "status": "Pand in gebruik"
+      }
+    ]
+  },
+  "energy_label": {
+    "class": "B",
+    "registered_at": "2026-02-04T15:31:59.943",
+    "valid_until": "2036-01-14T00:00:00",
+    "building_type": "Appartement",
+    "thermal_zone_area_m2": 54.41,
+    "energy_demand_kwh_m2_year": 109.02,
+    "primary_fossil_energy_kwh_m2_year": 172.52,
+    "renewable_energy_share_pct": 0.0
+  },
+  "neighbourhood": {
+    "code": "BU05990112",
+    "name": "Cool",
+    "statistics_year": 2024,
+    "average_woz_eur": 372000,
+    "average_electricity_kwh": 1690,
+    "average_gas_m3": 140,
+    "homes_with_solar_pct": 1
+  },
+  "air_quality": {
+    "status": "station-selection-not-yet-implemented"
+  },
+  "sources": []
+}
+```
+
+The energy-label object is now backed by a verified authenticated response.
+`air_quality` remains deliberately incomplete because a production-safe station
+selection has not yet been implemented.
+
+## Comparison and Audit Contract
+
+WoonLens compares normalized snapshots, but it must not treat every unequal
+number as an error. Each evaluated field difference should receive one of the
+following classifications:
+
+| Classification | Meaning |
+| --- | --- |
+| `match` | Comparable values agree within the documented tolerance |
+| `definition-difference` | Values use different scopes or measurement definitions |
+| `temporal-difference` | Values may differ because their reference dates differ |
+| `missing` | A required source or value is unavailable |
+| `possible-conflict` | Comparable values disagree and no known explanation rule applies |
+| `not-comparable` | The fields must not be evaluated against each other |
+
+For example, BAG `registered_area_m2` and EP-Online
+`thermal_zone_area_m2` describe different concepts. Their numerical difference
+may be useful evidence, but it is a `definition-difference`, not automatically
+a register error.
+
+Every audit result must retain:
+
+- the two source fields and values being evaluated;
+- their definitions and reference dates;
+- the classification and rule identifier;
+- a human-readable explanation;
+- the rule/version and evaluation timestamp.
+
+Historical comparison uses the same principle. A changed value is evidence of
+a changed public snapshot; it is not proof that the earlier or later record is
+incorrect.
+
+## Next Verification Steps
+
+1. Test expired-label, multiple-label, and no-label EP-Online responses.
+2. Download the complete Luchtmeetnet station catalogue and calculate the
+   nearest station that supports each requested component.
+3. Verify pollutant units from official metadata.
+4. Turn every field rule in this document into adapter contract tests.
+5. Add saved, redacted API fixtures after the first adapter implementation.

@@ -1,0 +1,661 @@
+# The WoonLens Data Journey
+
+## Purpose of This Document
+
+This document tells the story of how one address becomes a source-backed
+WoonLens property snapshot. It explains what each external API knows, what
+WoonLens asks for, what comes back, how the sources connect, and where the
+application must remain cautious.
+
+It complements the endpoint-level examples in
+[`DATA_SOURCE_API.md`](DATA_SOURCE_API.md). That guide is the request and field
+reference; this document is the conceptual integration narrative.
+
+## Verification Snapshot
+
+The source chain was last rechecked on **2026-08-30** with the following public
+address:
+
+```text
+Witte de Withstraat 42A, 3012BR Rotterdam
+```
+
+The verification checked live service availability and response shape. It did
+not save credentials, authenticated headers, signed URLs, or full production
+responses.
+
+| Source | Live result | What was verified |
+| --- | --- | --- |
+| PDOK Locatieserver | `200 OK` | Suggestion and lookup flow; BAG and area identifiers |
+| Kadaster BAG OGC API | `200 OK` | Residential-unit schema and building relation |
+| EP-Online Public REST API v5 | `200 OK` | Authenticated array response and BAG join fields |
+| CBS StatLine OData v4 | `200 OK` | Dataset entities, measure metadata, and units |
+| Luchtmeetnet Open API | `200 OK` | Station schema, measurement schema, and pagination |
+
+Official references:
+
+- [PDOK Locatieserver](https://www.pdok.nl/introductie/-/article/pdok-locatieserver-1)
+- [Kadaster BAG OGC API](https://api.pdok.nl/kadaster/bag/ogc/v2?f=html&lang=en)
+- [EP-Online Public REST API v5](https://public.ep-online.nl/swagger/index.html)
+- [CBS OData v4 metadata guide](https://www.cbs.nl/nl-nl/onze-diensten/open-data/statline-als-open-data/metadata-odata-v4)
+- [Luchtmeetnet Open API](https://api-docs.luchtmeetnet.nl/)
+
+Live verification proves that the documented path works at one point in time.
+It is not a guarantee that an upstream schema, dataset, rate limit, or service
+term will never change.
+
+## The Story in One Diagram
+
+```text
+What the user types
+        |
+        v
+PDOK Suggest ---- user confirms the intended address
+        |
+        v
+PDOK Lookup
+        |
+        +---- BAG addressable-object ID -------------------+
+        |                                                  |
+        +---- BAG address ID                               |
+        |                                                  v
+        +---- neighbourhood code                    EP-Online label
+        |                                                  |
+        +---- coordinates                                  |
+        |                                                  |
+        v                                                  |
+Kadaster BAG residential unit ---- building relation -----+
+        |                                                  |
+        v                                                  |
+Official property facts                                   |
+                                                           |
+neighbourhood code ---> CBS geometry + StatLine statistics|
+                                                           |
+coordinates ---------> compatible monitoring station      |
+                              |                            |
+                              v                            |
+                    Luchtmeetnet observations              |
+                                                           |
+        +--------------------------------------------------+
+        v
+Normalized snapshot -> validation rules -> comparison -> evidence report
+```
+
+The addressable-object ID is the strongest cross-source property join in the
+initial chain. The neighbourhood code and coordinates lead to contextual data,
+not additional facts about the individual home.
+
+## Chapter 1 — A Person Types an Address
+
+The journey begins with an imprecise human input:
+
+```text
+Witte de Withstraat 42 Rotterdam
+```
+
+This is not yet a safe database key. It might refer to `42`, `42A`, another
+suffix, or an address written with a different spelling. WoonLens therefore
+does not parse the text and guess.
+
+Instead, it calls the PDOK Locatieserver Suggest endpoint:
+
+```http
+GET https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest
+    ?q=Witte%20de%20Withstraat%2042%20Rotterdam
+    &fq=type:adres
+    &rows=5
+```
+
+### What WoonLens asks for
+
+- The user's partial address text in `q`
+- Only address results with `fq=type:adres`
+- A small result set suitable for an autocomplete list
+
+### What comes back
+
+The suggestion response contains lightweight search results. A result includes
+fields such as:
+
+- `id`: a temporary PDOK lookup identifier
+- `weergavenaam`: the human-readable address
+- `type`: the result type
+- `adrestype`: main or secondary address information
+- `score`: search relevance
+
+The live check returned four matching suggestions for the example query. This
+is why WoonLens must show the options and let the user choose. A relevance
+score is not permission to silently replace `42` with `42A`.
+
+### The first important rule
+
+The PDOK suggestion `id` is a short-lived provider reference for the next
+request. It is not the official BAG identifier and must not become the
+WoonLens property key.
+
+## Chapter 2 — The Selection Receives Official Identifiers
+
+After the user selects a suggestion, WoonLens sends its PDOK result ID to the
+Lookup endpoint:
+
+```http
+GET https://api.pdok.nl/bzk/locatieserver/search/v3_1/lookup
+    ?id=adr-9aeafa8b9136c5d880bab391906efebc
+```
+
+The lookup response turns the selected search result into an integration
+passport. For the verified example, the important identifiers are:
+
+| Meaning | Source field | Verified example |
+| --- | --- | --- |
+| BAG address | `nummeraanduiding_id` | `0599200000508415` |
+| BAG addressable object | `adresseerbaarobject_id` | `0599010000295420` |
+| Neighbourhood | `buurtcode` | `BU05990112` |
+| District | `wijkcode` | `WK059901` |
+| Municipality | `gemeentecode` | `0599` |
+| Location | `centroide_ll` | WGS84 point |
+
+These values open different doors:
+
+- `adresseerbaarobject_id` connects the address to the BAG residential unit
+  and EP-Online registrations.
+- `nummeraanduiding_id` preserves the official address identity.
+- `buurtcode` connects the address to CBS neighbourhood datasets.
+- Coordinates support map display and spatial context such as monitoring
+  station selection.
+
+All official identifiers are stored as strings. Leading zeroes are part of the
+identity and must never be lost through integer conversion.
+
+## Chapter 3 — BAG Describes the Registered Physical Object
+
+With the 16-digit addressable-object ID, WoonLens asks the Kadaster BAG OGC API
+for the `verblijfsobject` record:
+
+```http
+GET https://api.pdok.nl/kadaster/bag/ogc/v2/collections/verblijfsobject/items
+    ?f=json
+    &identificatie=0599010000295420
+    &limit=1
+```
+
+The BAG API is open, requires no authentication, is provided without a usage
+fee, and identifies its data as Public Domain Mark 1.0. The official service
+metadata reports daily updates.
+
+### What the residential-unit record knows
+
+The live schema includes:
+
+- Official object identity
+- Object status
+- Usage purposes
+- Registered area
+- Address fields
+- Source-document metadata
+- Administrative place names and identifiers
+- One or more `pand.href` building relations
+
+The residential unit and the building are not the same object. An apartment is
+a residential unit inside a building; one residential unit can also relate to
+more than one building. WoonLens must follow every returned building relation
+instead of assuming a single building.
+
+### Following the building relation
+
+The `pand.href` value points to a BAG building feature. Following it returns
+facts such as:
+
+- BAG building ID
+- Construction year
+- Building status
+- Usage purposes
+- Number of related residential units where available
+
+The OGC feature URL or feature UUID is not necessarily the official BAG
+building identification. WoonLens stores them separately and treats the
+returned `identificatie` as the official building ID.
+
+### What BAG does not tell us
+
+BAG's registered area is not an energy calculation area, a measured interior
+area, or a guarantee of current physical condition. BAG also does not tell us
+the current energy label. Those facts belong to other sources and definitions.
+
+## Chapter 4 — EP-Online Adds the Energy Registration
+
+The same BAG addressable-object ID is sent to EP-Online:
+
+```http
+GET https://public.ep-online.nl/api/v5/PandEnergielabel/
+    AdresseerbaarObject/0599010000295420
+Authorization: <personal API key>
+```
+
+The actual request URL is a single line; it is wrapped above for readability.
+
+### Access requirements
+
+EP-Online differs from the other initial APIs:
+
+- A personal API key is required.
+- The key is sent in the `Authorization` header.
+- Every self-hosted user must obtain their own key.
+- The key is stored only in a local `.env` file.
+- It must never appear in commits, logs, fixtures, reports, screenshots, or
+  GitHub Issues.
+
+The live authenticated request returned `200 OK`. The response was an array
+containing one registration. Even a single result is represented as an array,
+so the adapter must support zero, one, or multiple registrations.
+
+### What an energy registration contains
+
+The verified v5 schema includes:
+
+- Registration, inspection, and validity dates
+- Registration status and calculation method
+- Building class, type, and subtype
+- BAG residential-unit and building IDs
+- Construction year
+- Thermal-zone area
+- Energy class
+- Energy demand
+- Primary fossil energy
+- Renewable-energy share
+- Calculated CO2 emissions and energy use
+- Additional nullable energy-performance indicators
+
+### How EP-Online connects back to BAG
+
+EP-Online returns both `BAGVerblijfsobjectID` and `BAGPandIDs`. WoonLens must
+verify that the returned residential-unit ID equals the non-placeholder ID it
+requested. The returned building IDs can then be cross-checked against BAG.
+
+This gives WoonLens two useful comparisons:
+
+1. BAG construction year versus EP-Online construction year
+2. BAG registered area versus EP-Online thermal-zone area
+
+Neither difference is automatically an error. The area values describe
+different scopes. WoonLens retains both, attaches their definitions, and lets a
+validation rule explain the difference.
+
+### Selecting a current registration
+
+All returned registrations must be stored. A tentative display rule is:
+
+1. Reject records whose BAG object ID does not match the request.
+2. Exclude expired registrations for the current-label view.
+3. Select the matching record with the latest registration date.
+
+This rule remains provisional until multiple-registration fixtures and edge
+cases are tested. Every normalized registration remains available for
+auditability; raw payload retention follows the applicable terms and approved
+retention policy.
+
+### Bulk and mutation files
+
+EP-Online also exposes metadata for total and daily mutation files. Those
+responses may contain temporary signed download URLs. WoonLens must never log,
+publish, or persist those URLs in a report. Bulk ingestion is not required for
+the first address-by-address vertical slice.
+
+## Chapter 5 — The Address Enters Its Neighbourhood
+
+The PDOK lookup result also provides `BU05990112`. This code is used to retrieve
+CBS neighbourhood geometry through PDOK:
+
+```http
+GET https://api.pdok.nl/cbs/wijken-en-buurten-2025/ogc/v1/
+    collections/buurten/items
+    ?f=json
+    &buurtcode=BU05990112
+    &limit=1
+```
+
+The actual request URL is a single line; it is wrapped above for readability.
+
+The response can provide the official boundary, neighbourhood and municipality
+names, dataset year, population, household count, density, and other contextual
+indicators.
+
+### The level-of-detail boundary
+
+This data describes the neighbourhood, not the selected home. A neighbourhood
+average must never be displayed as a property fact.
+
+For example:
+
+```text
+Correct:   Average residential WOZ value in this neighbourhood: EUR 372,000
+Incorrect: This property's WOZ value: EUR 372,000
+```
+
+The geometry dataset helps WoonLens identify and display the area. More
+specific housing and energy indicators come from CBS StatLine.
+
+## Chapter 6 — CBS Numbers Need Their Dictionary
+
+CBS StatLine OData v4 is not a simple object containing descriptive field
+names. It is cell-oriented: observations refer to measure identifiers, and
+metadata tables explain what those identifiers mean.
+
+For dataset `85984NED`, the service advertises these relevant entities:
+
+- `MeasureGroups`
+- `MeasureCodes`
+- `Dimensions`
+- `WijkenEnBuurtenGroups`
+- `WijkenEnBuurtenCodes`
+- `Observations`
+- `Properties`
+
+### First request: learn the measure definitions
+
+WoonLens fetches `MeasureCodes` and stores the identifier, title, and unit. The
+live check confirmed these initial measures:
+
+| Measure ID | Official meaning | Official unit |
+| --- | --- | --- |
+| `M001642` | Average residential WOZ value | EUR × 1,000 |
+| `M000221_2` | Average electricity delivery | kWh |
+| `M008294` | Average electricity returned | kWh |
+| `M000219_2` | Average natural-gas consumption | m³ |
+| `M008297` | Homes with solar power | % |
+
+The frontend must not hardcode these labels and units without retaining the
+source metadata. A measure definition may be corrected or redesigned upstream.
+
+### Second request: fetch observations
+
+WoonLens filters `Observations` by both neighbourhood code and selected measure
+IDs. It then joins:
+
+```text
+Observations.Measure = MeasureCodes.Identifier
+```
+
+An observation only becomes meaningful when combined with:
+
+- Measure definition and unit
+- Neighbourhood code
+- Dataset identifier and year
+- `ValueAttribute`, including special or missing-value meaning
+- Retrieval timestamp
+
+### Why the newest table is not always the answer
+
+During the initial investigation, the 2025 table contained the selected WOZ
+observation for the example neighbourhood but not all selected household energy
+measures. The 2024 table contained the complete initial set.
+
+WoonLens therefore selects the latest complete year per metric rather than
+assuming that the newest dataset is complete for every measure. The report
+must disclose the year attached to each metric. It must not silently combine
+different years under one generic “current” label.
+
+CBS OData responses can be paginated. The adapter must follow
+`@odata.nextLink`; otherwise a successful HTTP response may still produce an
+incomplete dataset.
+
+## Chapter 7 — Air Quality Comes From a Station, Not the Front Door
+
+The address coordinates can support a search for nearby Luchtmeetnet stations.
+The API has separate station and measurement resources.
+
+For the station used in the verified integration path:
+
+```http
+GET https://api.luchtmeetnet.nl/open_api/stations/NL01487
+```
+
+Station metadata includes:
+
+- Station location and geometry
+- Station type, such as traffic
+- Operator organisation
+- Municipality and province
+- Supported measurement components
+- Start year
+
+Measurements are requested separately:
+
+```http
+GET https://api.luchtmeetnet.nl/open_api/stations/NL01487/measurements
+    ?formula=NO2
+    &order=timestamp_measured
+    &order_direction=desc
+    &page=1
+```
+
+The live response contained a `data` collection and pagination metadata. Each
+measurement contains:
+
+- `formula`
+- `value`
+- `timestamp_measured`
+- `timestamp_measured_start`
+- `timestamp_measured_end`
+
+### The spatial honesty rule
+
+A station reading is not a measurement at the selected address. The report
+must show:
+
+- Station name and identifier
+- Operator
+- Station type
+- Straight-line distance from the address
+- Pollutant
+- Measurement window
+- Whether the value is provisional or ratified when known
+
+The current example proves the endpoint, not the final station-selection
+algorithm. Production use still requires a station catalogue and a documented
+rule for selecting the nearest station that supports the requested pollutant.
+Distance alone may not make a traffic station representative of residential
+background exposure.
+
+The measurement response does not itself provide a unit. WoonLens must verify
+units from official component or bulk-file metadata before presenting a value.
+Until then, a numeric value without a verified unit is not display-ready.
+
+Long historical series should use RIVM yearly downloads rather than paging
+through the recent-measurement API.
+
+## Chapter 8 — The Sources Meet in a Normalized Snapshot
+
+The source adapters do not merge raw JSON objects directly. Each adapter maps
+its response into a typed fragment while retaining provenance.
+
+Raw payloads and normalized evidence remain separate when payload retention is
+permitted. When it is not, the source record retains safe retrieval metadata and
+an integrity checksum without storing the payload.
+
+A simplified result looks like this:
+
+```json
+{
+  "address": {
+    "bag_address_id": "0599200000508415",
+    "bag_object_id": "0599010000295420",
+    "neighbourhood_code": "BU05990112"
+  },
+  "property": {
+    "registered_area_m2": 62,
+    "construction_year": 1873
+  },
+  "energy": {
+    "energy_class": "B",
+    "thermal_zone_area_m2": 54.41
+  },
+  "neighbourhood": {
+    "dataset_year": 2024,
+    "average_woz_eur": 372000
+  },
+  "air_quality": {
+    "status": "station-selection-not-yet-implemented"
+  },
+  "sources": []
+}
+```
+
+The values above are included to explain the verified example shape. They are
+not application fixtures and must be retrieved again when generating a new
+snapshot.
+
+### Provenance travels with every value
+
+Every normalized value must retain:
+
+- Provider and dataset
+- Endpoint, collection, table, and measure ID where applicable
+- Original object ID and source field
+- Dataset or reference period
+- Retrieval timestamp
+- Source status
+- Transformation rule and version
+- Applicable attribution
+
+This is what lets WoonLens answer not only “what is the value?” but also “who
+said it, when, at what geographic level, and according to which definition?”
+
+## Chapter 9 — Differences Become Explanations
+
+Once a snapshot exists, explicit rules evaluate relationships without erasing
+the original values.
+
+### Example: two area values
+
+```text
+BAG registered area:             62 m²
+EP-Online thermal-zone area:     54.41 m²
+```
+
+The correct result is not automatically “8 m² data error.” The sources describe
+different measurement scopes. WoonLens should label the difference, link both
+definitions, and only raise a potential conflict if a tested rule justifies it.
+
+### Example: construction year
+
+If BAG and EP-Online return the same year, WoonLens can mark the values as
+cross-source consistent. If they differ, both values remain visible with their
+source dates and statuses. The system does not silently choose a winner.
+
+### Example: missing CBS metric
+
+An absent observation is represented as a typed missing value. It is never
+converted to zero and is never filled from another year without disclosing the
+fallback.
+
+## Chapter 10 — Failure Is Part of the Data Story
+
+Each adapter must distinguish transport, authentication, validation, and data
+availability failures.
+
+| Situation | Meaning inside WoonLens |
+| --- | --- |
+| Timeout or upstream `5xx` | Source temporarily unavailable; retry safely |
+| `401` from EP-Online | Missing or inactive personal credential |
+| Invalid identifier | Reject locally before calling the provider |
+| Valid identifier with `404` | Typed source-specific not-found result |
+| Empty CBS observation | Missing metric, not zero |
+| Paginated response | Incomplete until every required page is read |
+| Unknown field or schema change | Contract failure; do not guess a mapping |
+| Partial source failure | Preserve successful sources and disclose the failure |
+
+Retries must use timeouts, backoff, and a small attempt limit. User-input errors
+and authentication failures are not retryable. Optional contextual sources
+should not erase successfully retrieved official property facts.
+
+## Chapter 11 — Recommended Adapter Boundaries
+
+The implementation should keep one client per upstream responsibility:
+
+```text
+PdokLocationClient
+    suggest_address(query)
+    lookup_address(provider_result_id)
+
+BagClient
+    get_residential_unit(bag_object_id)
+    get_building(feature_url)
+
+EpOnlineClient
+    get_energy_registrations(bag_object_id)
+
+CbsGeometryClient
+    get_neighbourhood(neighbourhood_code, dataset_year)
+
+CbsStatLineClient
+    get_measure_codes(dataset_id, measure_ids)
+    get_observations(dataset_id, area_code, measure_ids)
+
+LuchtmeetnetClient
+    list_or_load_stations()
+    get_station(station_id)
+    get_measurements(station_id, pollutant, time_range)
+```
+
+An orchestration service owns the journey. Individual clients must not know
+about frontend presentation or silently join unrelated sources.
+
+## Chapter 12 — What Is Known and What Still Needs Proof
+
+### Confirmed enough for the first vertical slice
+
+- Current PDOK Suggest and Lookup endpoints
+- BAG residential-unit retrieval by official object ID
+- Following BAG building relations
+- EP-Online authentication and addressable-object query
+- EP-Online BAG join fields
+- CBS OData service structure and selected 2024 measure metadata
+- Luchtmeetnet station and measurement response shapes
+- The cross-source identifier chain for the verified address
+
+### Must be resolved during implementation
+
+- Final EP-Online current-registration selection using multiple-record fixtures
+- Rate-limit and retry policies for every provider
+- Upstream schema-contract monitoring
+- CBS dataset discovery and per-measure year-selection automation
+- CBS special-value and `ValueAttribute` mapping catalogue
+- Nearest compatible Luchtmeetnet station selection
+- Official pollutant unit metadata
+- Rules for station representativeness, not only distance
+- RIVM provisional versus ratified status mapping
+- Exact retention periods for raw responses and snapshots
+- Re-verification of third-party terms before public release
+
+These are implementation tasks, not details to hide behind defaults.
+
+## Chapter 13 — Definition of Done for a Source Adapter
+
+A source adapter is complete only when:
+
+1. Its official documentation and applicable terms are linked.
+2. Authentication and secret handling are documented.
+3. Request parameters and identifiers are validated locally.
+4. Success, empty, not-found, invalid, unauthorized, timeout, and upstream
+   failure behaviours are defined.
+5. Raw and normalized response models are separate.
+6. Every normalized field has a source-field mapping and unit policy.
+7. Missing values remain distinguishable from zero.
+8. Pagination is implemented where required.
+9. Deterministic redacted or synthetic fixtures cover the contract.
+10. Optional live smoke tests are disabled by default.
+11. Provenance and attribution are retained.
+12. Schema changes fail visibly instead of producing guessed values.
+
+## Closing Perspective
+
+WoonLens is not valuable merely because it calls several APIs. Its value comes
+from respecting what each source can legitimately claim.
+
+PDOK tells us which official object the user selected. BAG describes the
+registered residential unit and building. EP-Online describes an energy
+registration linked through BAG. CBS places the address inside a statistical
+area. Luchtmeetnet describes observations at a monitoring station. WoonLens
+preserves those boundaries, records the evidence, and explains the differences
+without inventing certainty.

@@ -1,0 +1,108 @@
+name: Feature
+description: Propose a user-facing or technical capability with a verifiable outcome.
+title: "feat: "
+labels: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe one focused outcome. Do not include credentials, real user search history, or restricted source data.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What concrete user or engineering problem needs to be solved?
+      placeholder: Explain the current limitation and who it affects.
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What observable outcome should this work produce?
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: In scope
+      description: List the behaviour and deliverables included in this Issue.
+      placeholder: |
+        - Deliverable or behaviour 1
+        - Deliverable or behaviour 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: State adjacent work that this Issue will not include.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Write objective checks that determine whether the Issue is complete.
+      placeholder: |
+        - [ ] Given ..., when ..., then ...
+        - [ ] Automated or manual evidence demonstrates ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      description: Which unit, contract, integration, end-to-end, or manual checks are expected?
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and blockers
+      description: Link prerequisite Issues, upstream decisions, or external blockers. Write "None" when there are none.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: data_level
+    attributes:
+      label: Highest data level affected
+      description: Select the most specific data level this feature reads, stores, transforms, or displays.
+      options:
+        - No property or location data
+        - National or dataset metadata
+        - Municipality, district, or neighbourhood context
+        - Monitoring-station observations
+        - Address or property records
+        - Unknown — investigation required
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Data, privacy, licensing, and security impact
+      description: Describe retention, provenance, credentials, licensing, personal-data, or threat implications. Write "None identified" when applicable.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: Readiness
+      options:
+        - label: I searched existing Issues for duplicates.
+          required: true
+        - label: This Issue contains no secrets, signed URLs, or unredacted personal data.
+          required: true
+        - label: The acceptance criteria describe outcomes rather than implementation activity alone.
+          required: true

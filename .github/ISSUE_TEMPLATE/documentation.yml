@@ -1,0 +1,80 @@
+name: Documentation or maintenance
+description: Improve project documentation, contributor guidance, or repository maintenance.
+title: "docs: "
+labels: []
+assignees: []
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Work type
+      options:
+        - Documentation correction
+        - Documentation addition
+        - Contributor experience
+        - Repository maintenance
+        - Tooling configuration
+        - License or attribution review
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is missing, incorrect, outdated, inconsistent, or difficult to use?
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and affected files
+      description: Describe the intended change and identify affected documents or configuration.
+    validations:
+      required: true
+
+  - type: textarea
+    id: sources
+    attributes:
+      label: Authoritative sources
+      description: Link official documentation or existing project decisions supporting the change. Write "Not applicable" when appropriate.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] The updated text is accurate and internally consistent.
+        - [ ] Links and examples are verified.
+        - [ ] Relevant indexes or cross-references are updated.
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      description: Describe link checks, linting, rendered review, commands, or manual validation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Behaviour, data, or security impact
+      description: State whether this changes a public contract, workflow, security guidance, or data interpretation.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I searched existing Issues and documentation for the same work.
+          required: true
+        - label: Examples contain no real credentials, signed URLs, or restricted payloads.
+          required: true
