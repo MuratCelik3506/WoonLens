@@ -81,6 +81,9 @@ identifiers or provenance.
 
 ## MVP scope
 
+The authoritative implementation boundaries, delivery phases, and acceptance
+criteria are maintained in [`docs/PROJECT_SCOPE.md`](docs/PROJECT_SCOPE.md).
+
 ### Included
 
 - Address search and normalization
