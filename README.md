@@ -105,11 +105,16 @@ and resolution:
 ```http
 GET /api/v1/addresses/suggest?q=Witte%20de%20Withstraat%2042A%20Rotterdam
 GET /api/v1/addresses/resolve?id=690240c0-fc13-59d9-8e98-2ef441237a54
+GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/administrative-context
 ```
 
 WoonLens uses the current PDOK Location API for search and the PDOK BAG OGC API
 for the selected address detail. Requests and responses are not persisted or
 cached, and address query strings are excluded from application access logs.
+The administrative-context endpoint resolves the trusted BAG address again,
+then joins its coordinates to current CBS neighbourhood, district,
+municipality, and province boundaries through configured PDOK APIs. These
+responses are also request-scoped and are never persisted.
 
 The project is currently in the Guest Live Comparison foundation phase. The
 backend runtime and health contract are implemented; provider integrations and

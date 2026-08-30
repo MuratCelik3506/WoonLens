@@ -6,12 +6,14 @@ from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 
 from woonlens.application.services.addresses import AddressService
+from woonlens.application.services.administrative import AdministrativeContextService
 from woonlens.domain.addresses import (
     AddressSuggestion,
     Coordinates,
     ResolvedAddress,
     SourceMetadata,
 )
+from woonlens.domain.administrative import AdministrativeArea, AdministrativeContext
 
 router = APIRouter(prefix="/addresses", tags=["addresses"])
 
@@ -98,8 +100,44 @@ class ResolvedAddressResponse(BaseModel):
         )
 
 
+class AdministrativeAreaResponse(BaseModel):
+    code: str
+    name: str
+
+    @classmethod
+    def from_domain(cls, area: AdministrativeArea | None) -> Self | None:
+        return cls(code=area.code, name=area.name) if area is not None else None
+
+
+class AdministrativeContextResponse(BaseModel):
+    neighborhood: AdministrativeAreaResponse | None
+    district: AdministrativeAreaResponse | None
+    municipality: AdministrativeAreaResponse | None
+    province: AdministrativeAreaResponse | None
+    sources: list[SourceResponse]
+
+    @classmethod
+    def from_domain(cls, context: AdministrativeContext) -> Self:
+        return cls(
+            neighborhood=AdministrativeAreaResponse.from_domain(context.neighborhood),
+            district=AdministrativeAreaResponse.from_domain(context.district),
+            municipality=AdministrativeAreaResponse.from_domain(context.municipality),
+            province=AdministrativeAreaResponse.from_domain(context.province),
+            sources=[SourceResponse.from_domain(source) for source in context.sources],
+        )
+
+
 def get_address_service(request: Request) -> AddressService:
     return cast(AddressService, request.app.state.address_service)
+
+
+def get_administrative_context_service(
+    request: Request,
+) -> AdministrativeContextService:
+    return cast(
+        AdministrativeContextService,
+        request.app.state.administrative_context_service,
+    )
 
 
 @router.get("/suggest", response_model=AddressSuggestionsResponse)
@@ -117,3 +155,17 @@ async def suggest_addresses(
 async def resolve_address(request: Request, id: UUID) -> ResolvedAddressResponse:
     address = await get_address_service(request).resolve(id)
     return ResolvedAddressResponse.from_domain(address)
+
+
+@router.get(
+    "/{address_id}/administrative-context",
+    response_model=AdministrativeContextResponse,
+)
+async def resolve_administrative_context(
+    request: Request,
+    address_id: UUID,
+) -> AdministrativeContextResponse:
+    context = await get_administrative_context_service(request).resolve_for_address(
+        address_id
+    )
+    return AdministrativeContextResponse.from_domain(context)

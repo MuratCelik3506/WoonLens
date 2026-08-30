@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 
 from woonlens.application.errors import (
     AddressNotFoundError,
+    AdministrativeContextNotFoundError,
     InvalidAddressQueryError,
     SourceContractError,
     SourceRateLimitedError,
@@ -20,6 +21,11 @@ _PROBLEMS: dict[type[WoonLensError], tuple[int, str, str]] = {
         404,
         "Address not found",
         "The selected official address could not be found.",
+    ),
+    AdministrativeContextNotFoundError: (
+        404,
+        "Administrative context not found",
+        "No current official administrative context covers the selected address.",
     ),
     SourceRateLimitedError: (
         503,

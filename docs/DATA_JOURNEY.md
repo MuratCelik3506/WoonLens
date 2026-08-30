@@ -303,24 +303,26 @@ Bulk ingestion and provider-history storage are outside the product scope.
 
 ## Chapter 5 — The Address Enters Its Neighbourhood
 
-The current address-resolution response does not claim a CBS neighbourhood
-code. A later contextual-data use case must determine which published CBS
-neighbourhood geometry contains the address point, then use that returned code
-for statistics. For example, after that code has been established:
+The administrative-context use case resolves the selected BAG address again so
+that the backend, rather than the client, supplies the trusted CRS84 point. It
+queries current CBS boundaries through PDOK and returns official codes and
+names for the containing neighbourhood, district, municipality, and province.
 
 ```http
-GET https://api.pdok.nl/cbs/wijken-en-buurten-2025/ogc/v1/
+GET https://api.pdok.nl/cbs/wijken-en-buurten-2026/ogc/v1/
     collections/buurten/items
     ?f=json
-    &buurtcode=BU05990112
-    &limit=1
+    &bbox=<small non-zero box around the BAG point>
+    &limit=2
 ```
 
 The actual request URL is a single line; it is wrapped above for readability.
 
-The response can provide the official boundary, neighbourhood and municipality
-names, dataset year, population, household count, density, and other contextual
-indicators.
+The neighbourhood result supplies neighbourhood, district, and municipality
+codes and names. A concurrent, year-filtered CBS Gebiedsindelingen request
+supplies the province. No boundary geometry or upstream response is persisted.
+No match and ambiguous matches are explicit outcomes; missing levels are not
+invented.
 
 ### The level-of-detail boundary
 

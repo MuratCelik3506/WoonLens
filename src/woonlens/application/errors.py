@@ -12,6 +12,10 @@ class AddressNotFoundError(WoonLensError):
     code = "address_not_found"
 
 
+class AdministrativeContextNotFoundError(WoonLensError):
+    code = "administrative_context_not_found"
+
+
 class SourceRateLimitedError(WoonLensError):
     code = "source_rate_limited"
 
