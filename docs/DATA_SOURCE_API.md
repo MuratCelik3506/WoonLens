@@ -467,49 +467,64 @@ before this rule is treated as final.
 
 ---
 
-## 4. CBS Neighbourhood Geometry via PDOK
+## 4. CBS Administrative Context via PDOK
 
-**Purpose:** retrieve the official neighbourhood boundary and basic indicators.
+**Purpose:** identify the current official neighbourhood, district,
+municipality, and province containing a resolved BAG address coordinate.
 
-- [Official OGC API](https://api.pdok.nl/cbs/wijken-en-buurten-2025/ogc/v1?f=html&lang=en)
+- [CBS Wijken en Buurten 2026 OGC API](https://api.pdok.nl/cbs/wijken-en-buurten-2026/ogc/v1?f=html&lang=en)
+- [CBS Gebiedsindelingen OGC API](https://api.pdok.nl/cbs/gebiedsindelingen/ogc/v1?f=html&lang=en)
 - Authentication: none
-- Join key: `buurtcode`
+- License: CC BY 4.0
+- Update frequency: annual; the configured dataset year must match the
+  published boundary edition
+- Spatial input: the CRS84 point obtained from the fixed BAG address-detail
+  endpoint, never a client-supplied name or area code
 
 ### Request
 
 ```bash
 curl -sS --get \
-  'https://api.pdok.nl/cbs/wijken-en-buurten-2025/ogc/v1/collections/buurten/items' \
+  'https://api.pdok.nl/cbs/wijken-en-buurten-2026/ogc/v1/collections/buurten/items' \
   --data-urlencode 'f=json' \
-  --data-urlencode 'buurtcode=BU05990112' \
-  --data-urlencode 'limit=1'
+  --data-urlencode 'bbox=4.89999,52.36999,4.90001,52.37001' \
+  --data-urlencode 'limit=2'
+
+curl -sS --get \
+  'https://api.pdok.nl/cbs/gebiedsindelingen/ogc/v1/collections/provincie_gegeneraliseerd/items' \
+  --data-urlencode 'f=json' \
+  --data-urlencode 'bbox=4.89999,52.36999,4.90001,52.37001' \
+  --data-urlencode 'jaarcode=2026' \
+  --data-urlencode 'limit=2'
 ```
 
 Verified result summary:
 
 ```json
 {
-  "buurtcode": "BU05990112",
-  "buurtnaam": "Cool",
-  "gemeentecode": "GM0599",
-  "gemeentenaam": "Rotterdam",
-  "jaar": 2025,
-  "aantal_inwoners": 6625,
-  "aantal_huishoudens": 3930,
-  "bevolkingsdichtheid_inwoners_per_km2": 10865,
-  "geometry": "MultiPolygon omitted from this example"
+  "neighborhood": {"code": "BU0363AF08", "name": "Zuiderkerkbuurt"},
+  "district": {"code": "WK0363AF", "name": "Nieuwmarkt/Lastage"},
+  "municipality": {"code": "GM0363", "name": "Amsterdam"},
+  "province": {"code": "PV27", "name": "Noord-Holland"}
 }
 ```
+
+OGC API Features rejects a zero-area point `bbox`, so WoonLens sends a tiny
+non-zero bounding box around the trusted address point and requests at most two
+features. Zero matches produce a typed no-coverage result. One match is mapped;
+more than one is rejected as ambiguous rather than guessed. The two independent
+source requests run concurrently. Partial coverage remains explicit: an area is
+`null` and only the sources that contributed values are returned.
 
 ### Field Policy
 
 | Field group | Handling |
 | --- | --- |
-| Codes, names, `jaar`, and geometry | Include in the transient response |
-| Population, household count, density, land/water area | Include with dataset year |
-| Postal code and address density | Use in memory for context and validation |
-| Age, marital-status, and origin percentages | Ignore for the housing MVP |
-| Missing-value sentinels such as negative CBS codes | Convert to typed missing reasons, never display as numbers |
+| Official codes and names | Include in the transient response |
+| Dataset year and retrieval time | Preserve as provenance |
+| Boundary geometry | Use only for the provider spatial query; do not expose or store |
+| Statistical indicators | Out of scope for this context endpoint |
+| Unknown provider fields | Ignore; required contract fields still validate strictly |
 
 The PDOK neighbourhood geometry is not the source for the complete WOZ and
 energy set. Those values come from CBS StatLine OData.

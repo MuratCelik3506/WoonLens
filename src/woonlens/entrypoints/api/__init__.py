@@ -4,12 +4,14 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
 
+from woonlens.adapters.sources.cbs.client import CbsAdministrativeContextAdapter
 from woonlens.adapters.sources.pdok.client import (
     PdokBagAddressAdapter,
     PdokLocationSearchAdapter,
 )
 from woonlens.application.errors import WoonLensError
 from woonlens.application.services.addresses import AddressService
+from woonlens.application.services.administrative import AdministrativeContextService
 from woonlens.bootstrap.settings import Settings, get_settings
 from woonlens.entrypoints.api.addresses import router as addresses_router
 from woonlens.entrypoints.api.health import router as health_router
@@ -19,6 +21,7 @@ from woonlens.entrypoints.api.problems import woonlens_error_handler
 def create_app(
     settings: Settings | None = None,
     address_service: AddressService | None = None,
+    administrative_context_service: AdministrativeContextService | None = None,
 ) -> FastAPI:
     """Create the HTTP application with explicit configuration."""
     resolved_settings = settings or get_settings()
@@ -27,6 +30,10 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         if address_service is not None:
             app.state.address_service = address_service
+            if administrative_context_service is not None:
+                app.state.administrative_context_service = (
+                    administrative_context_service
+                )
             yield
             return
 
@@ -40,16 +47,26 @@ def create_app(
             timeout=timeout,
             headers={"User-Agent": "WoonLens/0.1"},
         ) as client:
+            bag_adapter = PdokBagAddressAdapter(
+                client,
+                str(resolved_settings.pdok_bag_api_url),
+            )
             app.state.address_service = AddressService(
                 PdokLocationSearchAdapter(
                     client,
                     str(resolved_settings.pdok_location_api_url),
                 ),
-                PdokBagAddressAdapter(
-                    client,
-                    str(resolved_settings.pdok_bag_api_url),
-                ),
+                bag_adapter,
                 suggestion_limit=resolved_settings.address_suggestion_limit,
+            )
+            app.state.administrative_context_service = AdministrativeContextService(
+                bag_adapter,
+                CbsAdministrativeContextAdapter(
+                    client,
+                    str(resolved_settings.pdok_cbs_neighborhoods_api_url),
+                    str(resolved_settings.pdok_cbs_regions_api_url),
+                    dataset_year=resolved_settings.cbs_administrative_dataset_year,
+                ),
             )
             yield
 
