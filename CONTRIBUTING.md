@@ -13,6 +13,12 @@ problem.
 5. Open a pull request that links the issue and explains the result.
 6. Merge only after the documented acceptance criteria are satisfied.
 
+An Issue is closed as completed only when the repository
+[Definition of Done](docs/SOFTWARE_ENGINEERING.md#10-definition-of-done) is
+satisfied. Code completion alone is not sufficient: required evidence, tests,
+documentation, data provenance, security checks, and operational impact must be
+addressed before merge.
+
 ## Branch naming
 
 Use the issue number and a short description:
@@ -44,6 +50,10 @@ A pull request should include:
 - Tests and manual verification performed
 - Known limitations and follow-up work
 - A closing reference such as `Closes #12`
+
+Before marking a pull request ready, review the complete diff and the Definition
+of Done. Unfinished work must be represented by linked follow-up Issues; it must
+not be hidden in prose or silently deferred.
 
 ## Data and privacy rules
 
