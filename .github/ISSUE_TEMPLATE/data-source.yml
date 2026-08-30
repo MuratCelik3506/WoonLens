@@ -1,0 +1,130 @@
+name: Data-source integration
+description: Research, add, or change an external dataset or API integration.
+title: "data: "
+labels: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A data source is not ready for implementation until access, semantics, joins, provenance, failure behaviour, and reuse terms are understood.
+
+  - type: input
+    id: provider
+    attributes:
+      label: Provider and dataset
+      placeholder: Provider — official dataset or service name
+    validations:
+      required: true
+
+  - type: input
+    id: documentation
+    attributes:
+      label: Official documentation URL
+      description: Link to the provider's primary API or dataset documentation.
+      placeholder: https://...
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: WoonLens use case
+      description: What user question can this source answer that existing sources cannot?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: level
+    attributes:
+      label: Geographic or object level
+      options:
+        - Address
+        - BAG addressable object
+        - Building
+        - Parcel
+        - Neighbourhood
+        - District
+        - Municipality
+        - Monitoring station
+        - National dataset
+        - Mixed or unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: access
+    attributes:
+      label: Access and authentication
+      description: Describe endpoints, protocol, required credentials, registration, cost, rate limits, pagination, and update frequency.
+    validations:
+      required: true
+
+  - type: textarea
+    id: join
+    attributes:
+      label: Identifiers and source joins
+      description: Which official IDs or spatial relationships connect this source to PDOK, BAG, EP-Online, CBS, or another source?
+    validations:
+      required: true
+
+  - type: textarea
+    id: fields
+    attributes:
+      label: Candidate fields and definitions
+      description: List required source fields, units, reference periods, statuses, and measurement scopes.
+    validations:
+      required: true
+
+  - type: textarea
+    id: missing
+    attributes:
+      label: Missing and special values
+      description: Document nulls, sentinels, suppression, provisional values, and not-applicable states.
+    validations:
+      required: true
+
+  - type: textarea
+    id: licensing
+    attributes:
+      label: License, terms, attribution, and redistribution
+      description: Link official terms and explain storage, caching, reporting, and redistribution constraints.
+    validations:
+      required: true
+
+  - type: textarea
+    id: failure
+    attributes:
+      label: Failure and contract behaviour
+      description: Describe expected success, empty, invalid, unauthorized, not-found, rate-limit, timeout, upstream-error, and schema-change handling.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] Official documentation and terms are recorded.
+        - [ ] Deterministic contract fixtures cover required behaviours.
+        - [ ] Field mappings retain provenance and units.
+    validations:
+      required: true
+
+  - type: textarea
+    id: open_questions
+    attributes:
+      label: Open questions and blockers
+      description: List facts that still require provider confirmation or research. Write "None" when resolved.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: No credential, signed URL, restricted bulk payload, or personal data is included.
+          required: true
+        - label: Source-level facts are distinguished from neighbourhood, station, or other contextual data.
+          required: true

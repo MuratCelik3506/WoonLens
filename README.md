@@ -79,6 +79,19 @@ The project is currently in the repository-foundation phase. No production API
 or user interface has been released yet. Work is tracked through GitHub Issues
 and delivered with one branch and pull request per task.
 
+The detailed MVP boundaries, delivery phases, quality requirements, and GitHub
+work structure are defined in the [project scope](docs/PROJECT_SCOPE.md).
+
+The [data journey](docs/DATA_JOURNEY.md) explains how an address moves through
+PDOK, BAG, EP-Online, CBS, and Luchtmeetnet, including joins, uncertainty, and
+remaining research questions. Endpoint-level requests and field mappings are
+documented in the [data source API guide](docs/DATA_SOURCE_API.md).
+
+Engineering conventions and recorded implementation decisions are maintained
+in the [Software Engineering Handbook](docs/SOFTWARE_ENGINEERING.md).
+The complete document set is listed in the
+[documentation index](docs/README.md).
+
 ## Security and credentials
 
 Copy `.env.example` to `.env` and add personal credentials only to the local

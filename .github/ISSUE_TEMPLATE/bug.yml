@@ -1,0 +1,111 @@
+name: Bug report
+description: Report reproducible behaviour that differs from the documented contract.
+title: "fix: "
+labels: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before posting logs or payloads, remove addresses, property identifiers, credentials, authorization headers, cookies, and signed URLs. Report sensitive vulnerabilities through the private security process instead.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Describe the failure and its user or data impact in a few sentences.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What should happen according to the documented or intended contract?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What happened instead? Use redacted values only.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest deterministic sequence that reproduces the problem.
+      placeholder: |
+        1. Start ...
+        2. Run ... with synthetic or redacted input
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: WoonLens version or commit
+      description: Provide a release, commit SHA, or branch name.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: entrypoint
+    attributes:
+      label: Affected entrypoint
+      options:
+        - CLI
+        - HTTP API
+        - Background or scheduled operation
+        - Report output
+        - Development or CI tooling
+        - Documentation only
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, Docker version, Python image, browser, and relevant non-secret configuration.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted evidence
+      description: Add safe error codes, correlation IDs, screenshots, or logs. Do not attach raw provider payloads unless explicitly safe and redistributable.
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Data integrity and privacy impact
+      description: Could this produce a wrong value, lose provenance, expose data, or affect historical reproducibility?
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Regression verification
+      description: Describe the automated test that should fail before the fix and pass afterward.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I searched existing Issues for this problem.
+          required: true
+        - label: This is not a sensitive vulnerability requiring private reporting.
+          required: true
+        - label: All attached evidence is redacted and contains no credentials or direct property identifiers.
+          required: true
