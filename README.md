@@ -79,9 +79,30 @@ valuation, or building-inspection advice.
 
 ## Development status
 
-The project is currently in the repository-foundation phase. No production API
-or user interface has been released yet. Work is tracked through GitHub Issues
-and delivered with one branch and pull request per task.
+The backend foundation is implemented with Python 3.13, FastAPI, `uv`, and
+Docker. It currently exposes only a credential-free health endpoint; live
+provider integrations and the comparison use case follow in later slices.
+
+### Run locally
+
+Docker is the canonical runtime:
+
+```bash
+docker compose up --build api
+curl http://localhost:8000/api/v1/health
+```
+
+The expected response is `{"status":"ok"}`. Run every implemented Python
+quality gate in the same container environment:
+
+```bash
+docker compose --profile tools run --build --rm check
+```
+
+The project is currently in the Guest Live Comparison foundation phase. The
+backend runtime and health contract are implemented; provider integrations and
+the user interface have not been released yet. Work is tracked through GitHub
+Issues and delivered with one branch and pull request per task.
 
 The detailed MVP boundaries, delivery phases, quality requirements, and GitHub
 work structure are defined in the [project scope](docs/PROJECT_SCOPE.md).
@@ -100,9 +121,10 @@ The complete document set is listed in the
 
 ## Security and credentials
 
-Copy `.env.example` to `.env` and add personal credentials only to the local
-file. Never commit API keys, tokens, downloaded bulk datasets, or signed URLs.
-Each user must obtain and configure their own EP-Online API key.
+Copy `.env.example` to `.env` for local overrides. The current foundation needs
+no provider credentials. Never commit API keys, tokens, downloaded bulk
+datasets, or signed URLs; credential setup will be documented with the first
+integration that requires it.
 
 ## Licensing
 
@@ -113,8 +135,8 @@ separately before data ingestion is released.
 
 ## Roadmap
 
-1. Complete repository documentation, security, and licensing foundations.
-2. Build a tested command-line vertical slice for one Dutch address.
+1. Complete the Docker-first backend and quality-gate foundation.
+2. Build a tested address-resolution vertical slice for one Dutch address.
 3. Normalize and compare live responses from the first official data sources.
 4. Implement explainable cross-register validation rules.
 5. Generate source-attributed JSON and PDF downloads without server retention.

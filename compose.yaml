@@ -1,0 +1,21 @@
+services:
+  api:
+    build:
+      context: .
+      target: development
+    environment:
+      WOONLENS_ENVIRONMENT: development
+      WOONLENS_LOG_LEVEL: DEBUG
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+    init: true
+
+  check:
+    build:
+      context: .
+      target: development
+    command: ["sh", "-c", "ruff format --check . && ruff check . && mypy && lint-imports && pytest"]
+    profiles: ["tools"]

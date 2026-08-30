@@ -1,0 +1,84 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "woonlens"
+version = "0.1.0"
+description = "Privacy-first comparison of Dutch homes using live official data"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+license = { file = "LICENSE" }
+dependencies = [
+  "fastapi>=0.116,<1",
+  "pydantic-settings>=2.10,<3",
+  "structlog>=25.4,<26",
+  "uvicorn[standard]>=0.35,<1",
+]
+
+[dependency-groups]
+dev = [
+  "httpx>=0.28,<1",
+  "import-linter>=2.3,<3",
+  "mypy>=1.17,<2",
+  "pytest>=8.4,<9",
+  "pytest-cov>=6.2,<7",
+  "ruff>=0.12,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/woonlens"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers --cov=woonlens --cov-branch --cov-report=term-missing --cov-fail-under=90"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["woonlens"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[tool.importlinter]
+root_packages = ["woonlens"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Domain remains independent"
+type = "forbidden"
+source_modules = ["woonlens.domain"]
+forbidden_modules = [
+  "woonlens.application",
+  "woonlens.adapters",
+  "woonlens.entrypoints",
+  "woonlens.bootstrap",
+  "fastapi",
+  "pydantic",
+  "pydantic_settings",
+  "structlog",
+]
+
+[[tool.importlinter.contracts]]
+name = "Application does not depend on outer layers"
+type = "forbidden"
+source_modules = ["woonlens.application"]
+forbidden_modules = [
+  "woonlens.adapters",
+  "woonlens.entrypoints",
+  "woonlens.bootstrap",
+  "fastapi",
+]
