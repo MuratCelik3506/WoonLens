@@ -1,7 +1,11 @@
 # ADR 0005: Immutable Data Contracts and Field-Level Provenance
 
-- Status: Accepted
+- Status: Superseded in part by ADR 0009
 - Date: 2026-08-30
+
+ADR 0009 replaces the persistent snapshot and raw-provider-record portions of
+this decision. The immutable, typed, field-level provenance model remains
+accepted as a request-scoped in-memory contract.
 
 ## Context
 

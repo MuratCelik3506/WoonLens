@@ -2,13 +2,13 @@
 
 ## 1. Project Overview
 
-WoonLens is a local-first, open-source application for comparing Dutch
-residential properties using official public data sources.
+WoonLens is a privacy-first, open-source application for comparing Dutch
+residential properties using live official public data sources.
 
 The application resolves user-selected addresses, retrieves property and
 neighbourhood information from authoritative registries, preserves the
-provenance and meaning of every value, and generates reproducible comparison
-reports.
+provenance and meaning of every value during the request, and can generate a
+source-attributed download without retaining provider data on the server.
 
 WoonLens is a data-auditing and decision-support tool. It does not provide
 legal, financial, valuation, or building-inspection advice.
@@ -26,10 +26,10 @@ Users can access individual facts, but it is difficult to determine:
 - When the value was retrieved or last updated
 - Why two official sources show different values
 - Whether data is missing, outdated, provisional, or conflicting
-- Whether a comparison can be reproduced later
+- Whether a value describes the property or only its surrounding area
 
-WoonLens addresses this problem by creating source-backed property snapshots
-and applying explicit comparison and validation rules.
+WoonLens addresses this problem by creating transient source-backed property
+views in memory and applying explicit comparison and validation rules.
 
 ## 3. Project Objectives
 
@@ -43,10 +43,13 @@ WoonLens will:
 6. Explain meaningful differences between official registers.
 7. Distinguish missing data from zero values.
 8. Identify stale, provisional, and potentially conflicting information.
-9. Store reproducible property snapshots.
-10. Export comparisons as structured JSON and readable PDF reports.
-11. Run locally without requiring a hosted WoonLens account.
-12. Use user-owned credentials for authenticated services.
+9. Avoid persisting provider responses and derived property facts.
+10. Export the current comparison as structured JSON or a readable PDF without
+    server retention.
+11. Support complete use without an account and optional accounts for saved
+    searches, favourites, and comparison lists.
+12. Re-fetch official data whenever a saved search or comparison is opened.
+13. Use appropriately isolated credentials for authenticated services.
 
 ## 4. Target Users
 
@@ -109,10 +112,10 @@ The MVP will include a limited and documented selection of:
 Environmental observations must not be presented as exact property-level
 measurements unless the source explicitly supports that interpretation.
 
-### 5.4 Normalized Property Snapshots
+### 5.4 Transient Normalized Property Views
 
-Each address will produce a normalized property snapshot. Every normalized
-value must retain:
+Each address produces a normalized property view that exists only for the live
+request. Every normalized value in that response must retain:
 
 - Provider and dataset
 - Source endpoint, table, or collection
@@ -122,10 +125,8 @@ value must retain:
 - Transformation rule and validation result
 - Applicable attribution
 
-Raw source responses must remain separate from normalized values when provider
-terms, privacy rules, and the approved retention policy permit payload storage.
-Otherwise, WoonLens retains safe retrieval metadata and an integrity checksum
-without retaining the payload.
+Raw source responses are validated and transformed in memory. They are not
+written to the application database, filesystem, logs, reports, or cache.
 
 ### 5.5 Property Comparison
 
@@ -180,11 +181,22 @@ personal owner or resident information, or unnecessary raw source records.
 The application will:
 
 - Run locally using Docker Compose.
-- Require no WoonLens-hosted account.
-- Store credentials only in a local environment file.
-- Require users to obtain their own EP-Online API key.
+- Provide the complete comparison workflow without requiring an account.
+- Allow optional accounts to save minimum search, favourite, and comparison
+  references without saving provider facts.
+- Inject provider credentials through the deployment environment.
 - Avoid logging user address searches by default.
 - Provide documented setup and health-check procedures.
+
+### 5.9 Optional Accounts
+
+Accounts are optional and do not unlock access to additional official property
+facts. An account may store only user-owned organisation data needed to reopen a
+search, favourite, or comparison. Opening a saved item always triggers new
+provider requests.
+
+The account store must not contain provider response fields, normalized
+property facts, environmental observations, generated reports, or API caches.
 
 ## 6. Out of Scope
 
@@ -200,9 +212,10 @@ The following are explicitly excluded from the MVP:
 - Automatic ranking of properties as best or worst
 - Native mobile applications
 - Real-time collaboration
-- Mandatory user accounts or hosted multi-tenant operation
+- Mandatory user accounts
 - Bulk redistribution of restricted source data
-- Long-term storage of user address-search history
+- Provider-response caching or storage
+- Historical property-fact timelines
 - Automatic correction of upstream public records
 
 These items require separate scope approval before implementation.
@@ -217,7 +230,6 @@ These items require separate scope approval before implementation.
 | CBS geometry via PDOK | Neighbourhood boundaries | None |
 | CBS StatLine OData | Neighbourhood and housing statistics | None |
 | Luchtmeetnet Open API | Current environmental observations | None |
-| RIVM downloads | Historical environmental data | Dataset-dependent |
 
 Each integration must be implemented behind an isolated source-specific
 client. Adding another source requires a documented use case, license and
@@ -229,15 +241,15 @@ test fixtures, and failure-handling rules.
 ### Backend
 
 The planned backend uses Python, FastAPI, Pydantic, and Pytest. It is
-responsible for source clients, response validation, normalization, snapshot
-creation, comparisons, reports, and health checks.
+responsible for source clients, response validation, request-scoped
+normalization, comparisons, downloads, account features, and health checks.
 
 ### Data Storage
 
-PostgreSQL with PostGIS is planned for normalized snapshots, raw-response
-metadata, provenance records, comparison results, transformation versions, and
-geographic references. The first vertical slice may use files or in-memory
-storage before the database is introduced.
+PostgreSQL is planned only for optional accounts and minimum saved-search,
+favourite, and comparison references. Provider payloads, normalized property
+facts, comparison results, and generated reports are explicitly excluded. The
+first vertical slice does not require a database.
 
 ### Frontend
 
@@ -316,15 +328,15 @@ Exit criteria:
 ### Phase 2 — CLI Vertical Slice
 
 Deliverables include the Python project structure, configuration handling,
-PDOK address resolution, BAG and EP-Online retrieval, a normalized property
-snapshot, JSON output, and automated tests.
+PDOK address resolution, BAG and EP-Online retrieval, a transient normalized
+property view, JSON output, and automated tests.
 
 Exit criterion: one selected Dutch address produces a validated, source-backed
-JSON snapshot.
+JSON view without persisting provider facts.
 
 ### Phase 3 — Comparison and Audit Engine
 
-Deliverables include multi-address input, snapshot comparison, a field
+Deliverables include multi-address input, live comparison, a field
 definition registry, validation and conflict rules, missing and stale-data
 handling, and rule-version metadata.
 
@@ -336,8 +348,8 @@ results.
 Deliverables include CBS and Luchtmeetnet/RIVM context, JSON and PDF evidence
 reports, attribution, and limitation sections.
 
-Exit criterion: a reproducible evidence report can be generated for a
-comparison.
+Exit criterion: a source-attributed JSON or PDF download can be generated for a
+live comparison without server retention.
 
 ### Phase 5 — Local Web Application
 
@@ -356,6 +368,16 @@ documentation, a final license review, demo fixtures, and a versioned release.
 Exit criterion: the project can publish its first documented and reproducible
 release.
 
+### Phase 7 — Optional Account Organisation
+
+Deliverables include account registration and deletion, explicit favourites,
+named saved comparison lists, and live reruns using freshly retrieved official
+data.
+
+Exit criterion: signed-in users can organise address references without the
+database containing provider facts, comparison results, generated reports, or
+automatic search history.
+
 ## 13. GitHub Work Structure
 
 Development follows these rules:
@@ -371,7 +393,7 @@ Development follows these rules:
 Recommended milestones:
 
 1. `v0.1 — Repository Foundation`
-2. `v0.2 — CLI Property Snapshot`
+2. `v0.2 — CLI Live Property View`
 3. `v0.3 — Comparison Engine`
 4. `v0.4 — Evidence Reports`
 5. `v0.5 — Local Web Application`
@@ -389,6 +411,8 @@ The MVP is successful when:
 - Different measurement definitions are not presented as direct conflicts.
 - Comparison rules are explicit and tested.
 - JSON and PDF evidence reports can be generated.
-- A report can be reproduced from stored snapshots and rule versions.
-- The application runs locally without a hosted WoonLens account.
+- Provider responses and derived property facts are absent from persistent
+  storage after the request completes.
+- The complete comparison works without an account, while signed-in users may
+  save minimum search, favourite, and comparison references.
 - No credentials or restricted datasets are included in the repository.

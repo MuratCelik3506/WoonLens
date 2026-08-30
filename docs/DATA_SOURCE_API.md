@@ -1,9 +1,9 @@
 # WoonLens — Data Source API Guide
 
 This document defines the first verified integration path from one Dutch
-address to a normalized WoonLens property snapshot. The comparison layer runs
+address to a transient normalized WoonLens property view. The comparison layer runs
 this source chain independently for each selected address and compares the
-normalized snapshots; it does not compare unrelated raw API fields directly.
+normalized views in memory; it does not compare unrelated raw API fields directly.
 
 The examples below use one real address throughout the complete chain.
 
@@ -40,18 +40,17 @@ search text
   -> EP-Online energy-label registrations
   -> CBS neighbourhood geometry and statistics
   -> Luchtmeetnet station metadata and measurements
-  -> normalized WoonLens property snapshot
+  -> transient normalized WoonLens property view
 ```
 
 For a multi-address comparison, WoonLens repeats this chain for every address,
-stores each snapshot with its retrieval context, and then evaluates explicit
-comparison and audit rules.
+holds each normalized view and its retrieval context only for the request, and
+then evaluates explicit comparison and explanation rules.
 
 For every source, WoonLens must:
 
-1. preserve the unmodified response as a raw snapshot only when provider terms,
-   privacy rules, and the approved retention policy permit it; otherwise retain
-   safe retrieval metadata and an integrity checksum;
+1. validate and transform the response in memory without writing the provider
+   payload to application storage, logs, reports, or caches;
 2. validate required identifiers and value types;
 3. normalize only documented fields;
 4. retain source name, source URL, fetch time, and dataset year;
@@ -59,6 +58,12 @@ For every source, WoonLens must:
 6. avoid deriving claims that the source does not support;
 7. preserve source definitions, reference dates, and provisional/ratified
    status where available.
+
+Provider responses, normalized facts, and comparison results are request-scoped
+and must not be written to the application database, filesystem, logs, report
+store, analytics, or application cache. Optional accounts may retain only the
+minimum user-owned search or comparison reference needed to run these requests
+again.
 
 ---
 
@@ -126,9 +131,9 @@ Verified identifiers:
 | --- | --- | --- |
 | `id` | `provider_result_id` | Temporary lookup reference |
 | `weergavenaam` | `display_address` | Display value; do not parse identifiers from it |
-| `nummeraanduiding_id` | `bag_address_id` | Store as a zero-preserving string |
+| `nummeraanduiding_id` | `bag_address_id` | Retain as a zero-preserving string in the response |
 | `adresseerbaarobject_id` | `bag_object_id` | Canonical residential-object join key |
-| `openbareruimte_id` | `bag_public_space_id` | Store as a string |
+| `openbareruimte_id` | `bag_public_space_id` | Retain as a string in the response |
 | `postcode` | `postal_code` | Uppercase and remove spaces for matching |
 | `huisnummer` | `house_number` | Integer |
 | `huisletter` | `house_letter` | Nullable string |
@@ -138,7 +143,7 @@ Verified identifiers:
 | `buurtcode` | `neighbourhood_code` | CBS neighbourhood join key |
 | `wijkcode` | `district_code` | CBS district join key |
 | `gemeentecode` | `municipality_code` | Prefix with `GM` only for CBS datasets that require it |
-| `provinciecode` | `province_code` | Store as returned |
+| `provinciecode` | `province_code` | Retain as returned in the response |
 | `centroide_ll` | `location_wgs84` | Parse WKT as longitude/latitude, EPSG:4326 |
 | `centroide_rd` | `location_rd` | Parse WKT as Rijksdriehoek coordinates |
 | `gekoppeld_perceel` | raw only | Not required in the MVP report |
@@ -332,7 +337,12 @@ The initial request without a key returned:
 The successful response is always modeled as an array of
 `PandEnergielabelV5` objects, including when only one registration exists.
 
-### File Metadata Endpoints
+### File Metadata Endpoints — Research Only
+
+EP-Online exposes total and mutation-file metadata, but WoonLens does not use
+bulk ingestion in the stateless live-comparison product. The endpoints below
+remain documented only as verified provider behaviour and must not be called by
+the address-comparison workflow.
 
 Latest monthly total-file metadata:
 
@@ -369,10 +379,9 @@ Verified safe fields:
 }
 ```
 
-Both responses also contain a temporary signed `downloadUrl`. It must be used
-immediately by the ingestion worker and must never be committed, cached in a
-public response, or written to application logs. Valid total-file types are
-`xml`, `csv`, and `xlsx`.
+Both responses also contain a temporary signed `downloadUrl`. WoonLens must not
+request, store, log, publish, cache, or follow that URL. Valid provider file
+types are `xml`, `csv`, and `xlsx`, but bulk-file processing is out of scope.
 
 ### Verified Error Behaviour
 
@@ -383,7 +392,7 @@ public response, or written to application logs. Valid total-file types are
 | Valid-format unknown BAG ID | `404` | Return `energy_label: null` with a typed not-found reason |
 | Invalid address parameters | `400` | Reject before calling the provider |
 | Invalid mutation date format | `400` | Reject before calling the provider |
-| Removed daily mutation file | `404` | Trigger a new monthly snapshot workflow |
+| Removed daily mutation file | `404` | Research-only endpoint; no application action |
 
 `0000000000000000` is a dangerous legacy placeholder, not a safe unknown ID.
 The live API returned many unrelated historical registrations for it. WoonLens
@@ -436,8 +445,8 @@ must reject this value locally and must verify that every returned
 | `BerekendeCO2Emissie` | `calculated_co2_kg_m2_year` |
 | `BerekendeEnergieverbruik` | `calculated_energy_use_kwh_m2_year` |
 
-All nullable fields must remain nullable. All returned registrations must be
-stored. For the displayed current label, first exclude expired registrations
+All nullable fields must remain nullable. All returned registrations must remain
+available during selection in the current request. For the displayed current label, first exclude expired registrations
 and records whose BAG ID does not match the request, then select the greatest
 `Registratiedatum`. Multiple-registration fixtures still need verification
 before this rule is treated as final.
@@ -482,10 +491,10 @@ Verified result summary:
 
 | Field group | Handling |
 | --- | --- |
-| Codes, names, `jaar`, and geometry | Store and expose |
-| Population, household count, density, land/water area | Store and expose with dataset year |
-| Postal code and address density | Store for context and validation |
-| Age, marital-status, and origin percentages | Preserve in the raw snapshot but exclude from the housing MVP |
+| Codes, names, `jaar`, and geometry | Include in the transient response |
+| Population, household count, density, land/water area | Include with dataset year |
+| Postal code and address density | Use in memory for context and validation |
+| Age, marital-status, and origin percentages | Ignore for the housing MVP |
 | Missing-value sentinels such as negative CBS codes | Convert to typed missing reasons, never display as numbers |
 
 The PDOK neighbourhood geometry is not the source for the complete WOZ and
@@ -513,7 +522,7 @@ that the newest dataset contains every measure.
 ### Metadata Request
 
 CBS uses measure identifiers rather than descriptive property names. Fetch and
-store `MeasureCodes` before interpreting observations.
+join `MeasureCodes` in memory before interpreting observations.
 
 ```bash
 curl -sS --get \
@@ -549,11 +558,11 @@ neighbourhood average of EUR 372,000, never as the selected property's value.
 ### Observation Processing
 
 - Join `Observations.Measure` to `MeasureCodes.Identifier`.
-- Store the source unit instead of hardcoding a unit in the frontend.
+- Return the source unit instead of hardcoding a unit in the frontend.
 - Interpret `Value` only together with `ValueAttribute`.
 - If an observation is absent, keep it absent; do not fall back to zero.
-- Store `dataset_id`, `dataset_year`, `measure_id`, and `fetched_at` with every
-  normalized metric.
+- Include `dataset_id`, `dataset_year`, `measure_id`, and `fetched_at` with every
+  normalized metric in the response.
 - Follow `@odata.nextLink` whenever a query is paginated.
 
 ---
@@ -629,15 +638,15 @@ Verified first observation at test time:
 | measurement timestamps | start/end/representative time | Parse as timezone-aware UTC timestamps |
 
 The API measurement response does not include a unit. WoonLens must verify and
-store units from official component or bulk-file metadata before showing them.
+return units from official component metadata before showing them.
 
 Station observations are not address-level measurements. The report must show
 the station name, station type, distance from the address, and observation time.
 The selected station above proves the endpoint; a nearest-compatible-station
 catalogue must be implemented before production use.
 
-For long historical series, use the RIVM yearly downloads rather than paging
-through the current-measurement API.
+Long historical ingestion is outside the stateless product scope. WoonLens uses
+only the live measurements required for the current comparison.
 
 ---
 
@@ -696,7 +705,7 @@ selection has not yet been implemented.
 
 ## Comparison and Audit Contract
 
-WoonLens compares normalized snapshots, but it must not treat every unequal
+WoonLens compares transient normalized views, but it must not treat every unequal
 number as an error. Each evaluated field difference should receive one of the
 following classifications:
 
@@ -722,10 +731,6 @@ Every audit result must retain:
 - a human-readable explanation;
 - the rule/version and evaluation timestamp.
 
-Historical comparison uses the same principle. A changed value is evidence of
-a changed public snapshot; it is not proof that the earlier or later record is
-incorrect.
-
 ## Next Verification Steps
 
 1. Test expired-label, multiple-label, and no-label EP-Online responses.
@@ -733,4 +738,5 @@ incorrect.
    nearest station that supports each requested component.
 3. Verify pollutant units from official metadata.
 4. Turn every field rule in this document into adapter contract tests.
-5. Add saved, redacted API fixtures after the first adapter implementation.
+5. Add synthetic or minimized redacted contract fixtures after the first
+   adapter implementation; runtime provider responses must not become fixtures.

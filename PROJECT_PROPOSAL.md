@@ -2,9 +2,8 @@
 
 ## One-line summary
 
-WoonLens is a local-first, open-source tool for comparing Dutch homes,
-auditing official property records, and generating reproducible evidence
-reports.
+WoonLens is a privacy-first, open-source tool for comparing Dutch homes with
+live facts from official public sources.
 
 ## Problem
 
@@ -16,8 +15,8 @@ but cannot easily answer:
 - Which official source produced this value?
 - When was it last updated?
 - Why do two registers show different areas or construction details?
-- Has the public record changed since an earlier inspection?
-- Can the result be reproduced and shared without trusting an opaque score?
+- Which facts are property-level and which describe only the surrounding area?
+- Can the current result be understood without trusting an opaque score?
 
 Existing address dashboards usually aggregate values into cards. They rarely
 turn source differences, uncertainty, and provenance into a first-class product.
@@ -25,8 +24,8 @@ turn source differences, uncertainty, and provenance into a first-class product.
 ## Proposed solution
 
 A user enters two or more Dutch residential addresses. WoonLens resolves their
-official identifiers, requests data from selected public sources, normalizes
-the responses, and creates comparable property snapshots.
+official identifiers, requests data from selected public sources, and
+normalizes the responses in memory for a live comparison.
 
 The system then applies explicit validation rules. It distinguishes genuine
 conflicts from values that differ because they describe different concepts. For
@@ -39,8 +38,8 @@ The result is a transparent due-diligence evidence pack containing:
 - Source-level facts and missing-data indicators
 - Explainable warnings and cross-register differences
 - Retrieval dates and source provenance
-- Historical snapshot changes
-- Reproducible JSON and PDF reports
+- A source-attributed JSON or PDF download generated on demand
+- Clear disclosure that official data is refreshed when the comparison is run
 
 ## Target users
 
@@ -61,9 +60,11 @@ is the evidence and reconciliation workflow:
 1. Compare multiple homes instead of returning one isolated address card.
 2. Preserve source definitions rather than flattening unlike values.
 3. Detect and explain field-level differences between official registers.
-4. Version property snapshots so later changes can be inspected.
-5. Produce an export that records how and when every result was obtained.
-6. Run locally with user-owned credentials and no mandatory account.
+4. Avoid persisting provider responses or derived property facts.
+5. Produce an on-demand export that records how and when the current result was
+   obtained, without retaining the export on the server.
+6. Support full comparison without an account and optional accounts for saved
+   searches, favourites, and comparison lists.
 
 ## Initial data sources
 
@@ -88,7 +89,7 @@ criteria are maintained in [`docs/PROJECT_SCOPE.md`](docs/PROJECT_SCOPE.md).
 
 - Address search and normalization
 - Comparison of two to five addresses
-- BAG and EP-Online property snapshots
+- Live BAG and EP-Online property facts
 - Selected CBS and RIVM context
 - Field definitions and source timestamps
 - Explainable cross-source validation rules
@@ -114,25 +115,27 @@ criteria are maintained in [`docs/PROJECT_SCOPE.md`](docs/PROJECT_SCOPE.md).
 Select 2–5 addresses
     -> resolve official address and BAG identifiers
     -> retrieve source-specific records
-    -> normalize property snapshots
+    -> normalize transient property views in memory
     -> evaluate definitions, freshness, and conflicts
     -> compare homes side by side
-    -> export a reproducible evidence report
+    -> optionally download the current comparison
 ```
 
 ## Architecture direction
 
 - **Backend:** Python and FastAPI
 - **Validation:** Pydantic models and explicit rule objects
-- **Database:** PostgreSQL with PostGIS for snapshots and geospatial context
+- **Database:** PostgreSQL for optional accounts and minimum saved-search,
+  favourite, and comparison references; never provider facts
 - **Frontend:** TypeScript, Next.js, and MapLibre
-- **Jobs:** Idempotent source synchronization and snapshot creation
+- **Execution:** Request-scoped live source retrieval with no provider-data
+  persistence or background synchronization
 - **Testing:** Pytest, deterministic fixtures, contract tests, and limited live smoke tests
 - **Operations:** Docker Compose, GitHub Actions, structured logs, and health checks
 
 The first implementation milestone will be a command-line vertical slice. It
-must resolve one real address and produce a normalized, source-backed JSON
-snapshot before database or frontend complexity is introduced.
+must resolve one real address and produce a transient, source-backed JSON view
+without writing provider facts to a database or local cache.
 
 ## Provenance model
 
@@ -155,9 +158,9 @@ WoonLens code is released under the MIT License. Third-party data remains under
 its own terms and is not relicensed by this repository.
 
 The repository will contain code, documentation, synthetic fixtures, and
-minimal redacted examples. It will not contain personal API keys, address-search
-logs, restricted bulk exports, or source datasets whose redistribution terms
-have not been confirmed.
+minimal redacted examples. It will not contain personal API keys, provider
+responses, address-search logs, restricted bulk exports, or source datasets
+whose redistribution terms have not been confirmed.
 
 Each self-hosted user supplies their own EP-Online API key.
 
@@ -166,13 +169,14 @@ Each self-hosted user supplies their own EP-Online API key.
 1. Establish repository, security, licensing, and contributor foundations.
 2. Build and test PDOK address resolution.
 3. Add BAG residential-unit and building retrieval.
-4. Add EP-Online energy-performance retrieval using user-owned credentials.
-5. Define normalized snapshots and provenance records.
+4. Add EP-Online energy-performance retrieval using an isolated,
+   deployment-managed credential.
+5. Define transient normalized views and request-scoped provenance records.
 6. Implement the first explainable comparison and conflict rules.
 7. Add CBS and RIVM context with explicit geographic and status handling.
-8. Generate JSON and PDF evidence reports.
-9. Add the local web interface and side-by-side comparison experience.
-10. Publish a documented first release and reproducible demo.
+8. Generate non-retained JSON and PDF comparison downloads.
+9. Add the web interface and side-by-side comparison experience.
+10. Publish a documented first release and deterministic synthetic demo.
 
 ## Success criteria
 
@@ -180,6 +184,8 @@ Each self-hosted user supplies their own EP-Online API key.
 - Every displayed value identifies its source and retrieval/reference time.
 - Cross-register differences link to an explicit, tested explanation rule.
 - Missing and provisional data remain visible.
-- Reports can be reproduced from a stored snapshot and transformation version.
-- The complete application runs locally without a hosted WoonLens account.
+- Provider responses and derived property facts are absent from persistent
+  storage after a request completes.
+- The complete comparison works without an account; signing in adds only saved
+  searches, favourites, and comparison organisation.
 - CI verifies core clients, normalization, comparison, and report generation.

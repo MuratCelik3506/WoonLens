@@ -2,8 +2,8 @@
 
 ## Purpose of This Document
 
-This document tells the story of how one address becomes a source-backed
-WoonLens property snapshot. It explains what each external API knows, what
+This document tells the story of how one address becomes a source-backed,
+transient WoonLens property view. It explains what each external API knows, what
 WoonLens asks for, what comes back, how the sources connect, and where the
 application must remain cautious.
 
@@ -78,7 +78,7 @@ coordinates ---------> compatible monitoring station      |
                                                            |
         +--------------------------------------------------+
         v
-Normalized snapshot -> validation rules -> comparison -> evidence report
+Transient normalized view -> validation rules -> live comparison -> optional download
 ```
 
 The addressable-object ID is the strongest cross-source property join in the
@@ -164,8 +164,9 @@ These values open different doors:
 - Coordinates support map display and spatial context such as monitoring
   station selection.
 
-All official identifiers are stored as strings. Leading zeroes are part of the
-identity and must never be lost through integer conversion.
+All official identifiers are treated as strings in the transient model. Leading
+zeroes are part of the identity and must never be lost through integer
+conversion.
 
 ## Chapter 3 — BAG Describes the Registered Physical Object
 
@@ -283,23 +284,22 @@ validation rule explain the difference.
 
 ### Selecting a current registration
 
-All returned registrations must be stored. A tentative display rule is:
+All returned registrations must remain available in memory while the current
+label is selected. A tentative display rule is:
 
 1. Reject records whose BAG object ID does not match the request.
 2. Exclude expired registrations for the current-label view.
 3. Select the matching record with the latest registration date.
 
 This rule remains provisional until multiple-registration fixtures and edge
-cases are tested. Every normalized registration remains available for
-auditability; raw payload retention follows the applicable terms and approved
-retention policy.
+cases are tested. Provider responses and normalized registrations are discarded
+after the request completes.
 
-### Bulk and mutation files
+### Bulk and mutation files are out of scope
 
-EP-Online also exposes metadata for total and daily mutation files. Those
-responses may contain temporary signed download URLs. WoonLens must never log,
-publish, or persist those URLs in a report. Bulk ingestion is not required for
-the first address-by-address vertical slice.
+EP-Online also exposes metadata for total and daily mutation files. The live
+comparison does not call these endpoints or follow their signed download URLs.
+Bulk ingestion and provider-history storage are outside the product scope.
 
 ## Chapter 5 — The Address Enters Its Neighbourhood
 
@@ -461,17 +461,20 @@ The measurement response does not itself provide a unit. WoonLens must verify
 units from official component or bulk-file metadata before presenting a value.
 Until then, a numeric value without a verified unit is not display-ready.
 
-Long historical series should use RIVM yearly downloads rather than paging
-through the recent-measurement API.
+Long historical ingestion is outside the stateless product scope. Only live
+measurements needed for the current comparison are requested.
 
-## Chapter 8 — The Sources Meet in a Normalized Snapshot
+## Chapter 8 — The Sources Meet in a Transient Normalized View
 
 The source adapters do not merge raw JSON objects directly. Each adapter maps
 its response into a typed fragment while retaining provenance.
 
-Raw payloads and normalized evidence remain separate when payload retention is
-permitted. When it is not, the source record retains safe retrieval metadata and
-an integrity checksum without storing the payload.
+Raw payloads and normalized values exist only within request-scoped processing.
+They are not written to application storage, logs, reports, or caches.
+
+Guest and signed-in users use this same live pipeline. A signed-in user may save
+a favourite or named comparison reference, but reopening it starts the source
+journey again; the earlier provider facts are not restored from WoonLens.
 
 A simplified result looks like this:
 
@@ -502,8 +505,7 @@ A simplified result looks like this:
 ```
 
 The values above are included to explain the verified example shape. They are
-not application fixtures and must be retrieved again when generating a new
-snapshot.
+not application fixtures and must be retrieved again for every comparison.
 
 ### Provenance travels with every value
 
@@ -523,7 +525,7 @@ said it, when, at what geographic level, and according to which definition?”
 
 ## Chapter 9 — Differences Become Explanations
 
-Once a snapshot exists, explicit rules evaluate relationships without erasing
+Once the transient view exists, explicit rules evaluate relationships without erasing
 the original values.
 
 ### Example: two area values
@@ -625,7 +627,7 @@ about frontend presentation or silently join unrelated sources.
 - Official pollutant unit metadata
 - Rules for station representativeness, not only distance
 - RIVM provisional versus ratified status mapping
-- Exact retention periods for raw responses and snapshots
+- Account-data minimisation and deletion rules for saved search references
 - Re-verification of third-party terms before public release
 
 These are implementation tasks, not details to hide behind defaults.

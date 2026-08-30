@@ -8,6 +8,7 @@ contracts for WoonLens.
 | Document | Purpose |
 | --- | --- |
 | [`PROJECT_SCOPE.md`](PROJECT_SCOPE.md) | Authoritative MVP boundaries, delivery phases, and success criteria |
+| [`PRODUCT_FEATURE_MAP.md`](PRODUCT_FEATURE_MAP.md) | Guest and account journeys, screens, use cases, information architecture, and delivery order |
 | [`../PROJECT_PROPOSAL.md`](../PROJECT_PROPOSAL.md) | Product problem, audience, differentiation, and high-level direction |
 | [`../README.md`](../README.md) | Repository overview and entry point |
 
@@ -42,6 +43,7 @@ rejected alternatives, and revisit conditions for durable engineering choices.
 | [`0006`](adr/0006-layered-deterministic-testing.md) | Layered and deterministic testing |
 | [`0007`](adr/0007-automated-quality-gates.md) | Automated quality gates |
 | [`0008`](adr/0008-issue-driven-pull-request-workflow.md) | Issue-driven pull-request workflow |
+| [`0009`](adr/0009-stateless-provider-data-and-optional-accounts.md) | Stateless provider data and optional accounts |
 
 ## Authority and Change Rules
 
