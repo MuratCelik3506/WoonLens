@@ -538,6 +538,8 @@ energy set. Those values come from CBS StatLine OData.
 - [CBS OData documentation](https://www.cbs.nl/nl-nl/onze-diensten/open-data/statline-als-open-data/metadata-odata-v4)
 - [2024 dataset](https://www.cbs.nl/nl-nl/cijfers/detail/85984NED)
 - Authentication: none
+- Implemented endpoint:
+  `GET /api/v1/addresses/{address_id}/neighborhood-indicators`
 
 ### Why the 2024 Table Is Used Initially
 
@@ -584,10 +586,36 @@ Verified observations:
 These are neighbourhood statistics. The WOZ value must be presented as a
 neighbourhood average of EUR 372,000, never as the selected property's value.
 
+The implemented public response uses stable WoonLens keys while preserving the
+CBS measure identifier, title, source unit, dataset identifier, dataset year,
+retrieval time, and licence. `M001642` is multiplied by 1,000 and returned with
+the explicit normalized unit `EUR`; the original `x 1 000 euro` unit remains in
+`source_unit`.
+
+The address UUID is resolved through BAG and the neighbourhood code is resolved
+through the administrative-context adapter. A client cannot submit its own
+neighbourhood code. The adapter validates that the code matches `BU` followed
+by eight digits before constructing the OData filter.
+
 ### Observation Processing
 
 - Join `Observations.Measure` to `MeasureCodes.Identifier`.
 - Return the source unit instead of hardcoding a unit in the frontend.
+- Require exactly one metadata definition for each selected measure.
+- Reject duplicate or unexpected selected observations.
+- An omitted observation becomes `value: null` with
+  `missing_reason: not_published`.
+- A null observation preserves its CBS `ValueAttribute` as the missing reason.
+- A numeric observation with a non-neutral `ValueAttribute` is rejected rather
+  than displayed ambiguously.
+- Any `@odata.nextLink` in these tightly filtered five-row responses is rejected
+  as an incompatible contract; arbitrary provider URLs are never followed.
+- Neither metadata nor observations are cached or persisted.
+
+The current administrative boundary year is 2026 while this complete metric
+set is pinned to 2024. A neighbourhood code changed between those editions may
+therefore have no observations. That temporal mismatch is returned as missing
+data and must never be silently replaced with another area's figures.
 - Interpret `Value` only together with `ValueAttribute`.
 - If an observation is absent, keep it absent; do not fall back to zero.
 - Include `dataset_id`, `dataset_year`, `measure_id`, and `fetched_at` with every

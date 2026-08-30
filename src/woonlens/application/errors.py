@@ -16,6 +16,10 @@ class AdministrativeContextNotFoundError(WoonLensError):
     code = "administrative_context_not_found"
 
 
+class NeighborhoodContextNotFoundError(WoonLensError):
+    code = "neighborhood_context_not_found"
+
+
 class SourceRateLimitedError(WoonLensError):
     code = "source_rate_limited"
 

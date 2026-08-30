@@ -43,6 +43,9 @@ specific dataset terms have been checked and redistribution is clearly allowed.
   2026 and CBS Gebiedsindelingen, both exposed through PDOK under CC BY 4.0.
 - WoonLens returns the dataset name, retrieval time, and license with the
   request-scoped result and does not redistribute boundary geometry.
+- The neighbourhood-indicator response attributes Statistics Netherlands,
+  identifies table `85984NED` and year 2024, and retains the source measure IDs
+  and units. It does not store or redistribute the complete StatLine table.
 - Official copyright terms: <https://www.cbs.nl/en-gb/about-us/website/copyright>
 - Unless a specific item states otherwise, CBS website content is provided
   under Creative Commons Attribution 4.0.
