@@ -110,6 +110,7 @@ GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/neighborhood-indicato
 GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/property
 GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/energy-registration
 GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/overview
+POST /api/v1/comparisons/live
 ```
 
 WoonLens uses the current PDOK Location API for search and the PDOK BAG OGC API
@@ -136,6 +137,10 @@ EP-Online, and administrative-context requests concurrently, and then retrieves
 neighbourhood indicators from the trusted context. Expected optional-source
 failures produce explicit `unavailable_sections`; they do not erase successful
 sections.
+The live comparison endpoint accepts two to five unique address UUIDs and
+returns ordered home overviews plus a stable metric table. Numeric deltas use
+the first available value for the same metric as baseline; categorical and
+definition-incompatible values are not forced into misleading arithmetic.
 
 The project is currently in the Guest Live Comparison foundation phase. The
 backend runtime and its first official-data integrations are implemented; the

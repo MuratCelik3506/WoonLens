@@ -15,12 +15,14 @@ from woonlens.adapters.sources.pdok.property_client import PdokBagPropertyAdapte
 from woonlens.application.errors import WoonLensError
 from woonlens.application.services.addresses import AddressService
 from woonlens.application.services.administrative import AdministrativeContextService
+from woonlens.application.services.comparison import LiveHomeComparisonService
 from woonlens.application.services.energy import EnergyRegistrationService
 from woonlens.application.services.indicators import NeighborhoodIndicatorsService
 from woonlens.application.services.overview import HomeOverviewService
 from woonlens.application.services.property import PropertyDetailsService
 from woonlens.bootstrap.settings import Settings, get_settings
 from woonlens.entrypoints.api.addresses import router as addresses_router
+from woonlens.entrypoints.api.comparisons import router as comparisons_router
 from woonlens.entrypoints.api.health import router as health_router
 from woonlens.entrypoints.api.problems import woonlens_error_handler
 
@@ -33,6 +35,7 @@ def create_app(
     property_details_service: PropertyDetailsService | None = None,
     energy_registration_service: EnergyRegistrationService | None = None,
     home_overview_service: HomeOverviewService | None = None,
+    comparison_service: LiveHomeComparisonService | None = None,
 ) -> FastAPI:
     """Create the HTTP application with explicit configuration."""
     resolved_settings = settings or get_settings()
@@ -55,6 +58,8 @@ def create_app(
                 app.state.energy_registration_service = energy_registration_service
             if home_overview_service is not None:
                 app.state.home_overview_service = home_overview_service
+            if comparison_service is not None:
+                app.state.comparison_service = comparison_service
             yield
             return
 
@@ -119,13 +124,15 @@ def create_app(
                 bag_adapter,
                 energy_adapter,
             )
-            app.state.home_overview_service = HomeOverviewService(
+            overview_service = HomeOverviewService(
                 bag_adapter,
                 property_adapter,
                 energy_adapter,
                 administrative_adapter,
                 indicators_adapter,
             )
+            app.state.home_overview_service = overview_service
+            app.state.comparison_service = LiveHomeComparisonService(overview_service)
             yield
 
     app = FastAPI(
@@ -139,6 +146,7 @@ def create_app(
     app.add_exception_handler(WoonLensError, woonlens_error_handler)
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(addresses_router, prefix="/api/v1")
+    app.include_router(comparisons_router, prefix="/api/v1")
     return app
 
 
