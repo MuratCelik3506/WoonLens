@@ -87,6 +87,8 @@ WoonLens policy:
   of production responses.
 - Reports show only the records required for the addresses explicitly queried
   by the user.
+- The implemented endpoint returns a deliberately bounded summary of one
+  current registration rather than redistributing the upstream response array.
 
 ### RIVM Luchtmeetnet
 

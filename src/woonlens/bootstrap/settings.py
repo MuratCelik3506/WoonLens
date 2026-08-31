@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, HttpUrl
+from pydantic import Field, HttpUrl, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     http_pool_timeout_seconds: float = Field(default=2.0, gt=0)
     address_suggestion_limit: int = Field(default=8, ge=1, le=10)
     bag_max_related_buildings: int = Field(default=10, ge=1, le=25)
+    ep_online_api_url: HttpUrl = HttpUrl("https://public.ep-online.nl/api/v5")
+    ep_online_api_key: SecretStr | None = None
 
 
 @lru_cache

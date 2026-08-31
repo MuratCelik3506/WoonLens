@@ -298,9 +298,11 @@ label is selected. A tentative display rule is:
 2. Exclude expired registrations for the current-label view.
 3. Select the matching record with the latest registration date.
 
-This rule remains provisional until multiple-registration fixtures and edge
-cases are tested. Provider responses and normalized registrations are discarded
-after the request completes.
+This rule is implemented by
+`GET /api/v1/addresses/{address_id}/energy-registration`. Multiple,
+expired-only, empty, mismatched-identity, missing-credential, and provider-error
+responses are covered by deterministic tests. Provider responses and normalized
+registrations are discarded after the request completes.
 
 ### Bulk and mutation files are out of scope
 

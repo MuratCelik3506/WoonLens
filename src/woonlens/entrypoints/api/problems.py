@@ -4,9 +4,12 @@ from fastapi.responses import JSONResponse
 from woonlens.application.errors import (
     AddressNotFoundError,
     AdministrativeContextNotFoundError,
+    EnergyRegistrationNotFoundError,
     InvalidAddressQueryError,
     NeighborhoodContextNotFoundError,
     PropertyDetailsNotFoundError,
+    SourceAuthenticationError,
+    SourceConfigurationError,
     SourceContractError,
     SourceRateLimitedError,
     SourceUnavailableError,
@@ -45,6 +48,22 @@ _PROBLEMS: dict[type[WoonLensError], tuple[int, str, str]] = {
         422,
         "Unsupported addressable object",
         "The selected address does not identify a BAG residential unit.",
+    ),
+    EnergyRegistrationNotFoundError: (
+        404,
+        "Energy registration not found",
+        "No current EP-Online energy registration is available for the "
+        "selected address.",
+    ),
+    SourceConfigurationError: (
+        503,
+        "Official data source not configured",
+        "An official data source is not configured for this deployment.",
+    ),
+    SourceAuthenticationError: (
+        503,
+        "Official data source authentication failed",
+        "An official data source could not authenticate this deployment.",
     ),
     SourceRateLimitedError: (
         503,

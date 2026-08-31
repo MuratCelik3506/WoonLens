@@ -28,6 +28,18 @@ class UnsupportedAddressableObjectError(WoonLensError):
     code = "unsupported_addressable_object"
 
 
+class EnergyRegistrationNotFoundError(WoonLensError):
+    code = "energy_registration_not_found"
+
+
+class SourceConfigurationError(WoonLensError):
+    code = "source_configuration_error"
+
+
+class SourceAuthenticationError(WoonLensError):
+    code = "source_authentication_error"
+
+
 class SourceRateLimitedError(WoonLensError):
     code = "source_rate_limited"
 

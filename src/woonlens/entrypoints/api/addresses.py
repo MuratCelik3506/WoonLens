@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from woonlens.application.services.addresses import AddressService
 from woonlens.application.services.administrative import AdministrativeContextService
+from woonlens.application.services.energy import EnergyRegistrationService
 from woonlens.application.services.indicators import NeighborhoodIndicatorsService
 from woonlens.application.services.property import PropertyDetailsService
 from woonlens.domain.addresses import (
@@ -16,6 +17,7 @@ from woonlens.domain.addresses import (
     SourceMetadata,
 )
 from woonlens.domain.administrative import AdministrativeArea, AdministrativeContext
+from woonlens.domain.energy import EnergyRegistration, EnergyRegistrationDetails
 from woonlens.domain.indicators import NeighborhoodIndicator, NeighborhoodIndicators
 from woonlens.domain.property import Building, PropertyDetails, ResidentialUnit
 
@@ -231,6 +233,67 @@ class PropertyDetailsResponse(BaseModel):
         )
 
 
+class EnergyRegistrationResponse(BaseModel):
+    bag_object_id: str
+    bag_building_ids: list[str]
+    registration_date: datetime
+    inspection_date: datetime | None
+    valid_until: datetime
+    assessment_type: str | None
+    registration_status: str | None
+    building_class: str | None
+    building_type: str | None
+    building_subtype: str | None
+    construction_year: int | None
+    thermal_zone_area_m2: float | None
+    area_definition: str = "EP-Online thermal-zone area"
+    energy_class: str | None
+    energy_demand_kwh_m2_year: float | None
+    primary_fossil_energy_kwh_m2_year: float | None
+    renewable_energy_share_pct: float | None
+    calculated_co2_kg_m2_year: float | None
+    calculated_energy_use_kwh_m2_year: float | None
+
+    @classmethod
+    def from_domain(cls, registration: EnergyRegistration) -> Self:
+        return cls(
+            bag_object_id=registration.bag_object_id,
+            bag_building_ids=list(registration.bag_building_ids),
+            registration_date=registration.registration_date,
+            inspection_date=registration.inspection_date,
+            valid_until=registration.valid_until,
+            assessment_type=registration.assessment_type,
+            registration_status=registration.registration_status,
+            building_class=registration.building_class,
+            building_type=registration.building_type,
+            building_subtype=registration.building_subtype,
+            construction_year=registration.construction_year,
+            thermal_zone_area_m2=registration.thermal_zone_area_m2,
+            energy_class=registration.energy_class,
+            energy_demand_kwh_m2_year=registration.energy_demand_kwh_m2_year,
+            primary_fossil_energy_kwh_m2_year=(
+                registration.primary_fossil_energy_kwh_m2_year
+            ),
+            renewable_energy_share_pct=registration.renewable_energy_share_pct,
+            calculated_co2_kg_m2_year=registration.calculated_co2_kg_m2_year,
+            calculated_energy_use_kwh_m2_year=(
+                registration.calculated_energy_use_kwh_m2_year
+            ),
+        )
+
+
+class EnergyRegistrationDetailsResponse(BaseModel):
+    registration: EnergyRegistrationResponse
+    source: SourceResponse
+
+    @classmethod
+    def from_domain(cls, details: EnergyRegistrationDetails) -> Self:
+        return cls(
+            registration=EnergyRegistrationResponse.from_domain(details.registration),
+            source=SourceResponse.from_domain(details.source),
+        )
+
+
 def get_address_service(request: Request) -> AddressService:
     return cast(AddressService, request.app.state.address_service)
 
@@ -255,6 +318,12 @@ def get_neighborhood_indicators_service(
 
 def get_property_details_service(request: Request) -> PropertyDetailsService:
     return cast(PropertyDetailsService, request.app.state.property_details_service)
+
+
+def get_energy_registration_service(request: Request) -> EnergyRegistrationService:
+    return cast(
+        EnergyRegistrationService, request.app.state.energy_registration_service
+    )
 
 
 @router.get("/suggest", response_model=AddressSuggestionsResponse)
@@ -311,3 +380,17 @@ async def resolve_property_details(
         address_id
     )
     return PropertyDetailsResponse.from_domain(details)
+
+
+@router.get(
+    "/{address_id}/energy-registration",
+    response_model=EnergyRegistrationDetailsResponse,
+)
+async def resolve_energy_registration(
+    request: Request,
+    address_id: UUID,
+) -> EnergyRegistrationDetailsResponse:
+    details = await get_energy_registration_service(request).resolve_for_address(
+        address_id
+    )
+    return EnergyRegistrationDetailsResponse.from_domain(details)
