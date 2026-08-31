@@ -141,6 +141,10 @@ The live comparison endpoint accepts two to five unique address UUIDs and
 returns ordered home overviews plus a stable metric table. Numeric deltas use
 the first available value for the same metric as baseline; categorical and
 definition-incompatible values are not forced into misleading arithmetic.
+The same response includes versioned `insights` and per-home cross-source
+`audits`. These rules describe extremes, ties, insufficient data, definition
+differences, matches, and possible conflicts without declaring an overall
+winner or inventing an energy-class score.
 
 The project is currently in the Guest Live Comparison foundation phase. The
 backend runtime and its first official-data integrations are implemented; the

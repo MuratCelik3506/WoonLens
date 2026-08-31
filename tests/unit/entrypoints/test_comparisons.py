@@ -83,6 +83,9 @@ def test_endpoint_preserves_order_and_returns_metric_contract() -> None:
     assert body["metrics"][0]["metric"]["key"] == "registered_area_m2"
     assert body["metrics"][0]["values"][0]["missing_reason"] == "source_unavailable"
     assert body["notices"][0]["code"] == "area_definition_difference"
+    assert body["rules_version"] == "1.0.0"
+    assert body["insights"][0]["classification"] == "insufficient_data"
+    assert body["audits"][0]["classification"] == "missing"
 
 
 def test_endpoint_rejects_count_and_duplicate_addresses() -> None:

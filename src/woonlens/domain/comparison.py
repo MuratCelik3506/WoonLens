@@ -63,10 +63,40 @@ class ComparisonNotice:
 
 
 @dataclass(frozen=True, slots=True)
+class ComparisonInsight:
+    rule_id: str
+    metric_key: str
+    classification: str
+    address_ids: tuple[UUID, ...]
+    message: str
+
+    def __post_init__(self) -> None:
+        if not all((self.rule_id, self.metric_key, self.classification, self.message)):
+            raise ValueError("comparison insight fields are required")
+
+
+@dataclass(frozen=True, slots=True)
+class SourceAudit:
+    rule_id: str
+    address_id: UUID
+    classification: str
+    fields: tuple[str, str]
+    values: tuple[MetricScalar | None, MetricScalar | None]
+    message: str
+
+    def __post_init__(self) -> None:
+        if not all((self.rule_id, self.classification, *self.fields, self.message)):
+            raise ValueError("source audit fields are required")
+
+
+@dataclass(frozen=True, slots=True)
 class LiveHomeComparison:
     homes: tuple[ComparedHome, ...]
     metrics: tuple[MetricComparison, ...]
     notices: tuple[ComparisonNotice, ...]
+    rules_version: str = "1.0.0"
+    insights: tuple[ComparisonInsight, ...] = ()
+    audits: tuple[SourceAudit, ...] = ()
 
     def __post_init__(self) -> None:
         if not 2 <= len(self.homes) <= 5:
@@ -76,3 +106,5 @@ class LiveHomeComparison:
             raise ValueError("comparison homes must be unique")
         if any(len(metric.values) != len(self.homes) for metric in self.metrics):
             raise ValueError("every metric must contain one value per home")
+        if not self.rules_version:
+            raise ValueError("comparison rules version is required")

@@ -4,6 +4,11 @@ from uuid import UUID
 
 from woonlens.application.errors import WoonLensError
 from woonlens.application.ports.overview import HomeOverviewPort
+from woonlens.application.services.interpretation import (
+    RULES_VERSION,
+    audit_homes,
+    interpret_metrics,
+)
 from woonlens.domain.comparison import (
     ComparedHome,
     ComparedValue,
@@ -200,6 +205,9 @@ class LiveHomeComparisonService:
                     "selected home.",
                 ),
             ),
+            RULES_VERSION,
+            interpret_metrics(metrics),
+            audit_homes(homes),
         )
 
     async def _resolve_home(self, address_id: UUID) -> ComparedHome:

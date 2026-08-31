@@ -1,4 +1,5 @@
 import asyncio
+from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -53,7 +54,7 @@ def overview(
             None,
             None,
             None,
-            None,
+            1900 + area,
             float(area - 5),
             energy_class,
             100.0 + area,
@@ -125,6 +126,14 @@ async def test_compares_in_input_order_concurrently_and_calculates_deltas() -> N
         item for item in result.metrics if item.metric.key == "average_woz_value"
     )
     assert woz.values[1].delta_from_baseline == 50000
+    assert result.rules_version == "1.0.0"
+    insights = {item.metric_key: item for item in result.insights}
+    assert insights["registered_area_m2"].address_ids == (SECOND,)
+    assert insights["energy_class"].classification == "not_ranked"
+    assert {audit.classification for audit in result.audits} == {
+        "definition-difference",
+        "match",
+    }
 
 
 @pytest.mark.anyio
@@ -160,6 +169,33 @@ async def test_preserves_section_missing_reason() -> None:
     ).compare((FIRST, SECOND))
     energy = next(item for item in result.metrics if item.metric.key == "energy_class")
     assert energy.values[1].missing_reason == "source_unavailable"
+
+
+@pytest.mark.anyio
+async def test_flags_different_cross_source_construction_years() -> None:
+    second = overview(SECOND, 75, "A", 350000)
+    assert second.energy_registration is not None
+    changed_registration = replace(
+        second.energy_registration.registration,
+        construction_year=1901,
+    )
+    second = replace(
+        second,
+        energy_registration=replace(
+            second.energy_registration,
+            registration=changed_registration,
+        ),
+    )
+    result = await LiveHomeComparisonService(
+        OverviewStub({FIRST: overview(FIRST, 60, "B", 300000), SECOND: second})
+    ).compare((FIRST, SECOND))
+    audit = next(
+        item
+        for item in result.audits
+        if item.address_id == SECOND
+        and item.rule_id == "construction_year.cross_source.v1"
+    )
+    assert audit.classification == "possible-conflict"
 
 
 @pytest.mark.anyio
