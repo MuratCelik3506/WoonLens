@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     http_write_timeout_seconds: float = Field(default=2.0, gt=0)
     http_pool_timeout_seconds: float = Field(default=2.0, gt=0)
     address_suggestion_limit: int = Field(default=8, ge=1, le=10)
+    bag_max_related_buildings: int = Field(default=10, ge=1, le=25)
 
 
 @lru_cache

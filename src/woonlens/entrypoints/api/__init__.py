@@ -10,10 +10,12 @@ from woonlens.adapters.sources.pdok.client import (
     PdokBagAddressAdapter,
     PdokLocationSearchAdapter,
 )
+from woonlens.adapters.sources.pdok.property_client import PdokBagPropertyAdapter
 from woonlens.application.errors import WoonLensError
 from woonlens.application.services.addresses import AddressService
 from woonlens.application.services.administrative import AdministrativeContextService
 from woonlens.application.services.indicators import NeighborhoodIndicatorsService
+from woonlens.application.services.property import PropertyDetailsService
 from woonlens.bootstrap.settings import Settings, get_settings
 from woonlens.entrypoints.api.addresses import router as addresses_router
 from woonlens.entrypoints.api.health import router as health_router
@@ -25,6 +27,7 @@ def create_app(
     address_service: AddressService | None = None,
     administrative_context_service: AdministrativeContextService | None = None,
     neighborhood_indicators_service: NeighborhoodIndicatorsService | None = None,
+    property_details_service: PropertyDetailsService | None = None,
 ) -> FastAPI:
     """Create the HTTP application with explicit configuration."""
     resolved_settings = settings or get_settings()
@@ -41,6 +44,8 @@ def create_app(
                 app.state.neighborhood_indicators_service = (
                     neighborhood_indicators_service
                 )
+            if property_details_service is not None:
+                app.state.property_details_service = property_details_service
             yield
             return
 
@@ -87,6 +92,14 @@ def create_app(
                     dataset_year=(
                         resolved_settings.cbs_neighborhood_indicators_dataset_year
                     ),
+                ),
+            )
+            app.state.property_details_service = PropertyDetailsService(
+                bag_adapter,
+                PdokBagPropertyAdapter(
+                    client,
+                    str(resolved_settings.pdok_bag_api_url),
+                    max_related_buildings=(resolved_settings.bag_max_related_buildings),
                 ),
             )
             yield

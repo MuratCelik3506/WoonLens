@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from woonlens.application.services.addresses import AddressService
 from woonlens.application.services.administrative import AdministrativeContextService
 from woonlens.application.services.indicators import NeighborhoodIndicatorsService
+from woonlens.application.services.property import PropertyDetailsService
 from woonlens.domain.addresses import (
     AddressSuggestion,
     Coordinates,
@@ -16,6 +17,7 @@ from woonlens.domain.addresses import (
 )
 from woonlens.domain.administrative import AdministrativeArea, AdministrativeContext
 from woonlens.domain.indicators import NeighborhoodIndicator, NeighborhoodIndicators
+from woonlens.domain.property import Building, PropertyDetails, ResidentialUnit
 
 router = APIRouter(prefix="/addresses", tags=["addresses"])
 
@@ -176,6 +178,59 @@ class NeighborhoodIndicatorsResponse(BaseModel):
         )
 
 
+class ResidentialUnitResponse(BaseModel):
+    id: str
+    status: str | None
+    use_purposes: list[str]
+    registered_area_m2: int | None
+    area_definition: str = "BAG registered area"
+
+    @classmethod
+    def from_domain(cls, unit: ResidentialUnit) -> Self:
+        return cls(
+            id=unit.id,
+            status=unit.status,
+            use_purposes=list(unit.use_purposes),
+            registered_area_m2=unit.registered_area_m2,
+        )
+
+
+class BuildingResponse(BaseModel):
+    id: str
+    status: str | None
+    construction_year: int | None
+    use_purposes: list[str]
+    residential_unit_count: int | None
+
+    @classmethod
+    def from_domain(cls, building: Building) -> Self:
+        return cls(
+            id=building.id,
+            status=building.status,
+            construction_year=building.construction_year,
+            use_purposes=list(building.use_purposes),
+            residential_unit_count=building.residential_unit_count,
+        )
+
+
+class PropertyDetailsResponse(BaseModel):
+    residential_unit: ResidentialUnitResponse
+    buildings: list[BuildingResponse]
+    source: SourceResponse
+
+    @classmethod
+    def from_domain(cls, details: PropertyDetails) -> Self:
+        return cls(
+            residential_unit=ResidentialUnitResponse.from_domain(
+                details.residential_unit
+            ),
+            buildings=[
+                BuildingResponse.from_domain(building) for building in details.buildings
+            ],
+            source=SourceResponse.from_domain(details.source),
+        )
+
+
 def get_address_service(request: Request) -> AddressService:
     return cast(AddressService, request.app.state.address_service)
 
@@ -196,6 +251,10 @@ def get_neighborhood_indicators_service(
         NeighborhoodIndicatorsService,
         request.app.state.neighborhood_indicators_service,
     )
+
+
+def get_property_details_service(request: Request) -> PropertyDetailsService:
+    return cast(PropertyDetailsService, request.app.state.property_details_service)
 
 
 @router.get("/suggest", response_model=AddressSuggestionsResponse)
@@ -241,3 +300,14 @@ async def resolve_neighborhood_indicators(
         address_id
     )
     return NeighborhoodIndicatorsResponse.from_domain(result)
+
+
+@router.get("/{address_id}/property", response_model=PropertyDetailsResponse)
+async def resolve_property_details(
+    request: Request,
+    address_id: UUID,
+) -> PropertyDetailsResponse:
+    details = await get_property_details_service(request).resolve_for_address(
+        address_id
+    )
+    return PropertyDetailsResponse.from_domain(details)

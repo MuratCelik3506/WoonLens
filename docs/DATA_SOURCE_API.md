@@ -183,6 +183,16 @@ Verified identifiers:
 
 ### 2.1 Fetch the Residential Unit
 
+Implemented endpoint:
+
+```http
+GET /api/v1/addresses/{address_id}/property
+```
+
+`address_id` is the UUID returned by address search. WoonLens resolves it again
+and derives the 16-digit BAG addressable-object ID internally; clients cannot
+submit an arbitrary upstream BAG query through this endpoint.
+
 ```bash
 curl -sS --get \
   'https://api.pdok.nl/kadaster/bag/ogc/v2/collections/verblijfsobject/items' \
@@ -211,7 +221,10 @@ Verified result:
 ### 2.2 Follow the Building Relation
 
 The `pand.href` value is an OGC feature URL, not the building's BAG
-identification. Follow it to retrieve the building record:
+identification. WoonLens does not follow this provider-controlled URL directly.
+It verifies the configured origin and exact collection path, extracts only the
+feature UUID, and constructs a new request against the fixed configured BAG
+endpoint:
 
 ```bash
 curl -sS --get \
@@ -245,7 +258,7 @@ Verified building facts:
 | `documentnummer` | `source_document_number` | Provenance field |
 | `hoofdadres_identificatie` | `main_bag_address_id` | String join key |
 | address fields | normalized address fields | Cross-check against PDOK; BAG wins on conflict |
-| `pand.href` | `building_feature_urls` | Follow all relations; one unit can reference multiple buildings |
+| `pand.href` | related building UUIDs | Validate origin/path, extract UUID, and query a fixed endpoint; one unit can reference multiple buildings |
 | feature geometry | `unit_location` | Point in EPSG:4326 |
 | `rdf_seealso` | `source_uri` | Provenance link |
 
@@ -267,6 +280,9 @@ Verified building facts:
 
 Do not label every BAG `oppervlakte` value as “living area.” A mixed-use unit
 can have multiple usage purposes, as the verified example demonstrates.
+The live implementation bounds the number of related buildings with
+`WOONLENS_BAG_MAX_RELATED_BUILDINGS` (default `10`) before making building
+requests. Provider results are request-scoped and are not persisted or cached.
 
 ---
 

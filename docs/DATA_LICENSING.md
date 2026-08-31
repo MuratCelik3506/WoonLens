@@ -36,6 +36,9 @@ specific dataset terms have been checked and redistribution is clearly allowed.
   fee.
 - WoonLens should still record Kadaster/PDOK as the source, the retrieval time,
   and the relevant BAG identifiers for provenance.
+- The implemented property response reads residential-unit and related building
+  facts live, returns Public Domain Mark 1.0 attribution, and does not persist
+  or cache upstream records.
 
 ### Statistics Netherlands (CBS)
 
