@@ -10,6 +10,7 @@ def test_settings_have_safe_production_defaults(monkeypatch: MonkeyPatch) -> Non
 
     assert settings.environment == "production"
     assert settings.log_level == "INFO"
+    assert settings.bag_max_related_buildings == 10
 
 
 def test_settings_use_woonlens_environment_prefix(monkeypatch: MonkeyPatch) -> None:

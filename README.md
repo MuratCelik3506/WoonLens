@@ -107,6 +107,7 @@ GET /api/v1/addresses/suggest?q=Witte%20de%20Withstraat%2042A%20Rotterdam
 GET /api/v1/addresses/resolve?id=690240c0-fc13-59d9-8e98-2ef441237a54
 GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/administrative-context
 GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/neighborhood-indicators
+GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/property
 ```
 
 WoonLens uses the current PDOK Location API for search and the PDOK BAG OGC API
@@ -120,10 +121,14 @@ The neighbourhood-indicators endpoint continues that trusted join into CBS
 StatLine and returns a deliberately small housing-and-energy set. Every value
 is labelled as neighbourhood-level context and carries its dataset year;
 missing or suppressed observations remain missing rather than becoming zero.
+The property endpoint resolves the address again, fetches its live BAG
+residential-unit record, and returns every bounded related building with its
+construction year and status. Registered BAG area is explicitly labelled and
+is never presented as measured living area.
 
 The project is currently in the Guest Live Comparison foundation phase. The
-backend runtime and health contract are implemented; provider integrations and
-the user interface have not been released yet. Work is tracked through GitHub
+backend runtime and its first official-data integrations are implemented; the
+user interface has not been released yet. Work is tracked through GitHub
 Issues and delivered with one branch and pull request per task.
 
 The detailed MVP boundaries, delivery phases, quality requirements, and GitHub

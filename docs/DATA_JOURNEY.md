@@ -204,8 +204,10 @@ instead of assuming a single building.
 
 ### Following the building relation
 
-The `pand.href` value points to a BAG building feature. Following it returns
-facts such as:
+The `pand.href` value points to a BAG building feature. WoonLens validates its
+origin and exact collection path, extracts the feature UUID, and reconstructs
+the request from the configured BAG base URL. It never follows an arbitrary
+provider-returned URL. The resulting building record returns facts such as:
 
 - BAG building ID
 - Construction year
@@ -216,6 +218,11 @@ facts such as:
 The OGC feature URL or feature UUID is not necessarily the official BAG
 building identification. WoonLens stores them separately and treats the
 returned `identificatie` as the official building ID.
+
+This chapter is implemented by
+`GET /api/v1/addresses/{address_id}/property`. The response exists only for the
+request, includes source and licence metadata, and preserves missing provider
+fields as `null` instead of inventing values.
 
 ### What BAG does not tell us
 

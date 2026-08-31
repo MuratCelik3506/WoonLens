@@ -6,9 +6,11 @@ from woonlens.application.errors import (
     AdministrativeContextNotFoundError,
     InvalidAddressQueryError,
     NeighborhoodContextNotFoundError,
+    PropertyDetailsNotFoundError,
     SourceContractError,
     SourceRateLimitedError,
     SourceUnavailableError,
+    UnsupportedAddressableObjectError,
     WoonLensError,
 )
 
@@ -32,6 +34,17 @@ _PROBLEMS: dict[type[WoonLensError], tuple[int, str, str]] = {
         404,
         "Neighbourhood context not found",
         "No official neighbourhood context is available for the selected address.",
+    ),
+    PropertyDetailsNotFoundError: (
+        404,
+        "Property details not found",
+        "No current official BAG property details are available for the "
+        "selected address.",
+    ),
+    UnsupportedAddressableObjectError: (
+        422,
+        "Unsupported addressable object",
+        "The selected address does not identify a BAG residential unit.",
     ),
     SourceRateLimitedError: (
         503,

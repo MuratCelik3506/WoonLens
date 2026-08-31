@@ -20,6 +20,14 @@ class NeighborhoodContextNotFoundError(WoonLensError):
     code = "neighborhood_context_not_found"
 
 
+class PropertyDetailsNotFoundError(WoonLensError):
+    code = "property_details_not_found"
+
+
+class UnsupportedAddressableObjectError(WoonLensError):
+    code = "unsupported_addressable_object"
+
+
 class SourceRateLimitedError(WoonLensError):
     code = "source_rate_limited"
 
