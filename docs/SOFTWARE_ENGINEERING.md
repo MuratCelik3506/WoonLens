@@ -143,6 +143,12 @@ The full decision is recorded in
 - Source clients use shared `httpx.AsyncClient` instances.
 - The CLI invokes the same application use cases through `anyio.run()`.
 - Domain models, calculations, and comparison rules remain synchronous.
+- The home-overview application service resolves the address once, runs
+  independent provider calls concurrently, and sequences neighbourhood metrics
+  after administrative context because that join has a real data dependency.
+- Partial success catches only typed `WoonLensError` source outcomes; unexpected
+  exceptions remain visible to error monitoring instead of being mislabeled as
+  missing data.
 - Independent source calls may run concurrently only through bounded structured
   concurrency.
 

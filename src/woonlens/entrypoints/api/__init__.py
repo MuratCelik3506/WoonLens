@@ -17,6 +17,7 @@ from woonlens.application.services.addresses import AddressService
 from woonlens.application.services.administrative import AdministrativeContextService
 from woonlens.application.services.energy import EnergyRegistrationService
 from woonlens.application.services.indicators import NeighborhoodIndicatorsService
+from woonlens.application.services.overview import HomeOverviewService
 from woonlens.application.services.property import PropertyDetailsService
 from woonlens.bootstrap.settings import Settings, get_settings
 from woonlens.entrypoints.api.addresses import router as addresses_router
@@ -31,6 +32,7 @@ def create_app(
     neighborhood_indicators_service: NeighborhoodIndicatorsService | None = None,
     property_details_service: PropertyDetailsService | None = None,
     energy_registration_service: EnergyRegistrationService | None = None,
+    home_overview_service: HomeOverviewService | None = None,
 ) -> FastAPI:
     """Create the HTTP application with explicit configuration."""
     resolved_settings = settings or get_settings()
@@ -51,6 +53,8 @@ def create_app(
                 app.state.property_details_service = property_details_service
             if energy_registration_service is not None:
                 app.state.energy_registration_service = energy_registration_service
+            if home_overview_service is not None:
+                app.state.home_overview_service = home_overview_service
             yield
             return
 
@@ -82,39 +86,45 @@ def create_app(
                 str(resolved_settings.pdok_cbs_regions_api_url),
                 dataset_year=resolved_settings.cbs_administrative_dataset_year,
             )
+            indicators_adapter = CbsStatlineIndicatorsAdapter(
+                client,
+                str(resolved_settings.cbs_statline_api_url),
+                dataset_id=resolved_settings.cbs_neighborhood_indicators_dataset_id,
+                dataset_year=resolved_settings.cbs_neighborhood_indicators_dataset_year,
+            )
+            property_adapter = PdokBagPropertyAdapter(
+                client,
+                str(resolved_settings.pdok_bag_api_url),
+                max_related_buildings=resolved_settings.bag_max_related_buildings,
+            )
+            secret = resolved_settings.ep_online_api_key
+            energy_adapter = EpOnlineEnergyRegistrationAdapter(
+                client,
+                str(resolved_settings.ep_online_api_url),
+                secret.get_secret_value() if secret is not None else None,
+            )
             app.state.administrative_context_service = AdministrativeContextService(
                 bag_adapter, administrative_adapter
             )
             app.state.neighborhood_indicators_service = NeighborhoodIndicatorsService(
                 bag_adapter,
                 administrative_adapter,
-                CbsStatlineIndicatorsAdapter(
-                    client,
-                    str(resolved_settings.cbs_statline_api_url),
-                    dataset_id=(
-                        resolved_settings.cbs_neighborhood_indicators_dataset_id
-                    ),
-                    dataset_year=(
-                        resolved_settings.cbs_neighborhood_indicators_dataset_year
-                    ),
-                ),
+                indicators_adapter,
             )
             app.state.property_details_service = PropertyDetailsService(
                 bag_adapter,
-                PdokBagPropertyAdapter(
-                    client,
-                    str(resolved_settings.pdok_bag_api_url),
-                    max_related_buildings=(resolved_settings.bag_max_related_buildings),
-                ),
+                property_adapter,
             )
-            secret = resolved_settings.ep_online_api_key
             app.state.energy_registration_service = EnergyRegistrationService(
                 bag_adapter,
-                EpOnlineEnergyRegistrationAdapter(
-                    client,
-                    str(resolved_settings.ep_online_api_url),
-                    secret.get_secret_value() if secret is not None else None,
-                ),
+                energy_adapter,
+            )
+            app.state.home_overview_service = HomeOverviewService(
+                bag_adapter,
+                property_adapter,
+                energy_adapter,
+                administrative_adapter,
+                indicators_adapter,
             )
             yield
 

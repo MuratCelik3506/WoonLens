@@ -495,6 +495,18 @@ Guest and signed-in users use this same live pipeline. A signed-in user may save
 a favourite or named comparison reference, but reopening it starts the source
 journey again; the earlier provider facts are not restored from WoonLens.
 
+The implemented composition endpoint is:
+
+```http
+GET /api/v1/addresses/{address_id}/overview
+```
+
+It resolves the official address once. BAG property, EP-Online energy, and
+administrative-context requests then start concurrently. Neighbourhood
+indicators follow only after a trusted neighbourhood code is available. Address
+resolution is the required root; expected downstream source failures are
+reported per section so unrelated successful sections remain usable.
+
 A simplified result looks like this:
 
 ```json
@@ -516,15 +528,20 @@ A simplified result looks like this:
     "dataset_year": 2024,
     "average_woz_eur": 372000
   },
-  "air_quality": {
-    "status": "station-selection-not-yet-implemented"
-  },
-  "sources": []
+  "unavailable_sections": [
+    {
+      "section": "energy_registration",
+      "reason": "source_configuration_error"
+    }
+  ]
 }
 ```
 
 The values above are included to explain the verified example shape. They are
 not application fixtures and must be retrieved again for every comparison.
+Each populated section carries its own source metadata in the actual API
+response. Failure entries contain only stable reason codes and never provider
+payloads, credentials, or exception text.
 
 ### Provenance travels with every value
 
