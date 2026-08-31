@@ -79,9 +79,9 @@ valuation, or building-inspection advice.
 
 ## Development status
 
-The backend foundation is implemented with Python 3.13, FastAPI, `uv`, and
-Docker. It currently exposes only a credential-free health endpoint; live
-provider integrations and the comparison use case follow in later slices.
+The backend foundation and first guest live-overview use case are implemented
+with Python 3.13, FastAPI, `uv`, and Docker. Official provider responses remain
+transient and no comparison database is used.
 
 ### Run locally
 
@@ -109,6 +109,7 @@ GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/administrative-contex
 GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/neighborhood-indicators
 GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/property
 GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/energy-registration
+GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/overview
 ```
 
 WoonLens uses the current PDOK Location API for search and the PDOK BAG OGC API
@@ -130,6 +131,11 @@ The energy-registration endpoint uses the trusted BAG residential-unit ID to
 retrieve the latest non-expired EP-Online registration. It requires a personal
 server-side EP-Online API key and keeps the credential and provider response
 out of logs and storage.
+The overview endpoint resolves the address once, starts independent BAG,
+EP-Online, and administrative-context requests concurrently, and then retrieves
+neighbourhood indicators from the trusted context. Expected optional-source
+failures produce explicit `unavailable_sections`; they do not erase successful
+sections.
 
 The project is currently in the Guest Live Comparison foundation phase. The
 backend runtime and its first official-data integrations are implemented; the

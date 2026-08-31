@@ -795,6 +795,34 @@ The energy-label object is now backed by a verified authenticated response.
 `air_quality` remains deliberately incomplete because a production-safe station
 selection has not yet been implemented.
 
+## Live Home Overview Contract
+
+The implemented orchestration endpoint is:
+
+```http
+GET /api/v1/addresses/{address_id}/overview
+```
+
+The resolved address is mandatory. The following sections are optional and
+independently attributed:
+
+| Section | Scope | Trusted dependency |
+| --- | --- | --- |
+| `property` | Residential unit and building | BAG object ID from resolved address |
+| `energy_registration` | Residential unit | Same BAG object ID |
+| `administrative_context` | Address coordinate | CRS84 coordinate from resolved address |
+| `neighborhood_indicators` | Neighbourhood | CBS neighbourhood code from administrative context |
+
+Independent downstream calls start concurrently. Expected typed source,
+configuration, not-found, and unsupported-object failures set the relevant
+section to `null` and add a stable entry to `unavailable_sections`. If
+administrative context is unavailable, neighbourhood indicators receive
+`dependency_unavailable`. Unexpected programming errors are not hidden as
+partial success.
+
+The overview does not introduce persistence or caching. A new request repeats
+the live source journey.
+
 ## Comparison and Audit Contract
 
 WoonLens compares transient normalized views, but it must not treat every unequal

@@ -9,6 +9,7 @@ from woonlens.application.services.addresses import AddressService
 from woonlens.application.services.administrative import AdministrativeContextService
 from woonlens.application.services.energy import EnergyRegistrationService
 from woonlens.application.services.indicators import NeighborhoodIndicatorsService
+from woonlens.application.services.overview import HomeOverviewService
 from woonlens.application.services.property import PropertyDetailsService
 from woonlens.domain.addresses import (
     AddressSuggestion,
@@ -19,6 +20,7 @@ from woonlens.domain.addresses import (
 from woonlens.domain.administrative import AdministrativeArea, AdministrativeContext
 from woonlens.domain.energy import EnergyRegistration, EnergyRegistrationDetails
 from woonlens.domain.indicators import NeighborhoodIndicator, NeighborhoodIndicators
+from woonlens.domain.overview import HomeOverview, UnavailableSection
 from woonlens.domain.property import Building, PropertyDetails, ResidentialUnit
 
 router = APIRouter(prefix="/addresses", tags=["addresses"])
@@ -294,6 +296,60 @@ class EnergyRegistrationDetailsResponse(BaseModel):
         )
 
 
+class UnavailableSectionResponse(BaseModel):
+    section: str
+    reason: str
+
+    @classmethod
+    def from_domain(cls, item: UnavailableSection) -> Self:
+        return cls(section=item.section, reason=item.reason)
+
+
+class HomeOverviewResponse(BaseModel):
+    address: ResolvedAddressResponse
+    property: PropertyDetailsResponse | None
+    energy_registration: EnergyRegistrationDetailsResponse | None
+    administrative_context: AdministrativeContextResponse | None
+    neighborhood_indicators: NeighborhoodIndicatorsResponse | None
+    unavailable_sections: list[UnavailableSectionResponse]
+
+    @classmethod
+    def from_domain(cls, overview: HomeOverview) -> Self:
+        return cls(
+            address=ResolvedAddressResponse.from_domain(overview.address),
+            property=(
+                PropertyDetailsResponse.from_domain(overview.property)
+                if overview.property is not None
+                else None
+            ),
+            energy_registration=(
+                EnergyRegistrationDetailsResponse.from_domain(
+                    overview.energy_registration
+                )
+                if overview.energy_registration is not None
+                else None
+            ),
+            administrative_context=(
+                AdministrativeContextResponse.from_domain(
+                    overview.administrative_context
+                )
+                if overview.administrative_context is not None
+                else None
+            ),
+            neighborhood_indicators=(
+                NeighborhoodIndicatorsResponse.from_domain(
+                    overview.neighborhood_indicators
+                )
+                if overview.neighborhood_indicators is not None
+                else None
+            ),
+            unavailable_sections=[
+                UnavailableSectionResponse.from_domain(item)
+                for item in overview.unavailable_sections
+            ],
+        )
+
+
 def get_address_service(request: Request) -> AddressService:
     return cast(AddressService, request.app.state.address_service)
 
@@ -324,6 +380,10 @@ def get_energy_registration_service(request: Request) -> EnergyRegistrationServi
     return cast(
         EnergyRegistrationService, request.app.state.energy_registration_service
     )
+
+
+def get_home_overview_service(request: Request) -> HomeOverviewService:
+    return cast(HomeOverviewService, request.app.state.home_overview_service)
 
 
 @router.get("/suggest", response_model=AddressSuggestionsResponse)
@@ -394,3 +454,12 @@ async def resolve_energy_registration(
         address_id
     )
     return EnergyRegistrationDetailsResponse.from_domain(details)
+
+
+@router.get("/{address_id}/overview", response_model=HomeOverviewResponse)
+async def resolve_home_overview(
+    request: Request,
+    address_id: UUID,
+) -> HomeOverviewResponse:
+    overview = await get_home_overview_service(request).resolve(address_id)
+    return HomeOverviewResponse.from_domain(overview)
