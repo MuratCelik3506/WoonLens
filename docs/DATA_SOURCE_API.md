@@ -859,6 +859,31 @@ aggregates are not presented as facts about an individual property.
 The request, live provider fragments, normalized overviews, comparison table,
 and deltas are discarded after the response.
 
+### Interpretation rule set 1.0.0
+
+The comparison response includes:
+
+| Field | Meaning |
+| --- | --- |
+| `rules_version` | Version of the deterministic interpretation contract |
+| `insights` | Cross-home descriptions tied to stable metric rule IDs |
+| `audits` | Per-home cross-source checks tied to stable audit rule IDs |
+
+Insight classifications are `same`, `insufficient_data`,
+`descriptive_extreme`, `directional_indicator`, `context_only`, and
+`not_ranked`. Address UUID arrays identify every tied home selected by a rule.
+
+The initial cross-source audits are:
+
+| Rule ID | Fields | Classifications |
+| --- | --- | --- |
+| `area.definition.v1` | BAG registered area, EP-Online thermal-zone area | `definition-difference`, `missing` |
+| `construction_year.cross_source.v1` | BAG construction year, EP-Online construction year | `match`, `missing`, `possible-conflict` |
+
+Interpretation messages use normalized values only. They contain no raw
+provider response, exception text, signed URL, or credential. Updating a rule's
+meaning requires a new rule ID or rules version.
+
 ## Comparison and Audit Contract
 
 WoonLens compares transient normalized views, but it must not treat every unequal

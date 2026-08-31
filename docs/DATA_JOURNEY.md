@@ -564,6 +564,27 @@ BAG registered area is never subtracted from EP-Online thermal-zone area, and
 neighbourhood WOZ is explicitly local context rather than a valuation of the
 selected property.
 
+### Versioned interpretation, not automated judgement
+
+Comparison rule set `1.0.0` adds two derived collections to the transient
+response:
+
+- `insights` describes ties, data gaps, descriptive extremes, directional
+  energy indicators, and values that must not be ranked;
+- `audits` evaluates fields from two sources for the same home.
+
+No overall winner is produced. Larger registered area and newer construction
+year are preference or descriptive facts. Lower reported energy demand and
+primary fossil energy are directional indicators, not bills or guarantees.
+Energy classes remain official categories rather than being converted to an
+invented score.
+
+The area audit always classifies two available area values as
+`definition-difference`, because BAG registered area and EP-Online thermal-zone
+area describe different scopes. The construction-year audit returns `match`,
+`missing`, or `possible-conflict`; a possible conflict asks for source review
+instead of asserting that one register is wrong.
+
 ### Provenance travels with every value
 
 Every normalized value must retain:

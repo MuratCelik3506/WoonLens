@@ -152,6 +152,9 @@ The full decision is recorded in
 - The live comparison service bounds fan-out to two through five unique homes,
   starts their overview workflows concurrently, and preserves input order in
   the response.
+- Comparison interpretations are deterministic, side-effect-free application
+  rules with stable IDs and an explicit rules version. They describe evidence
+  and uncertainty but do not generate an overall winner.
 - Independent source calls may run concurrently only through bounded structured
   concurrency.
 

@@ -8,11 +8,13 @@ from woonlens.application.services.comparison import LiveHomeComparisonService
 from woonlens.domain.comparison import (
     ComparedHome,
     ComparedValue,
+    ComparisonInsight,
     ComparisonNotice,
     LiveHomeComparison,
     MetricComparison,
     MetricDefinition,
     MetricScalar,
+    SourceAudit,
 )
 from woonlens.entrypoints.api.addresses import HomeOverviewResponse
 
@@ -108,10 +110,51 @@ class ComparisonNoticeResponse(BaseModel):
         return cls(code=notice.code, message=notice.message)
 
 
+class ComparisonInsightResponse(BaseModel):
+    rule_id: str
+    metric_key: str
+    classification: str
+    address_ids: list[UUID]
+    message: str
+
+    @classmethod
+    def from_domain(cls, insight: ComparisonInsight) -> Self:
+        return cls(
+            rule_id=insight.rule_id,
+            metric_key=insight.metric_key,
+            classification=insight.classification,
+            address_ids=list(insight.address_ids),
+            message=insight.message,
+        )
+
+
+class SourceAuditResponse(BaseModel):
+    rule_id: str
+    address_id: UUID
+    classification: str
+    fields: tuple[str, str]
+    values: tuple[MetricScalar | None, MetricScalar | None]
+    message: str
+
+    @classmethod
+    def from_domain(cls, audit: SourceAudit) -> Self:
+        return cls(
+            rule_id=audit.rule_id,
+            address_id=audit.address_id,
+            classification=audit.classification,
+            fields=audit.fields,
+            values=audit.values,
+            message=audit.message,
+        )
+
+
 class LiveHomeComparisonResponse(BaseModel):
     homes: list[ComparedHomeResponse]
     metrics: list[MetricComparisonResponse]
     notices: list[ComparisonNoticeResponse]
+    rules_version: str
+    insights: list[ComparisonInsightResponse]
+    audits: list[SourceAuditResponse]
 
     @classmethod
     def from_domain(cls, comparison: LiveHomeComparison) -> Self:
@@ -124,6 +167,14 @@ class LiveHomeComparisonResponse(BaseModel):
             notices=[
                 ComparisonNoticeResponse.from_domain(notice)
                 for notice in comparison.notices
+            ],
+            rules_version=comparison.rules_version,
+            insights=[
+                ComparisonInsightResponse.from_domain(insight)
+                for insight in comparison.insights
+            ],
+            audits=[
+                SourceAuditResponse.from_domain(audit) for audit in comparison.audits
             ],
         )
 
