@@ -823,6 +823,42 @@ partial success.
 The overview does not introduce persistence or caching. A new request repeats
 the live source journey.
 
+## Stateless Multi-Home Comparison Contract
+
+```http
+POST /api/v1/comparisons/live
+Content-Type: application/json
+
+{
+  "address_ids": [
+    "690240c0-fc13-59d9-8e98-2ef441237a54",
+    "11111111-1111-4111-8111-111111111111"
+  ]
+}
+```
+
+The request requires two to five unique UUIDs. Output order matches input order,
+while overview work begins concurrently. Each metric returns:
+
+- a stable key and human-readable label;
+- the data scope and unit;
+- a definition that prevents category mistakes;
+- one value or explicit missing reason per requested home;
+- a baseline marker; and
+- a delta only when the metric supports same-definition numeric comparison.
+
+The first available value for an individual numeric metric is its baseline.
+This allows a later home to remain comparable when an earlier home or section
+is unavailable. It does not make the first home intrinsically better.
+
+The response includes an `area_definition_difference` notice because BAG
+registered area and EP-Online thermal-zone area are separate metrics with
+different meanings. It also includes a `neighborhood_context` notice so CBS
+aggregates are not presented as facts about an individual property.
+
+The request, live provider fragments, normalized overviews, comparison table,
+and deltas are discarded after the response.
+
 ## Comparison and Audit Contract
 
 WoonLens compares transient normalized views, but it must not treat every unequal

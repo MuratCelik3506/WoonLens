@@ -149,6 +149,9 @@ The full decision is recorded in
 - Partial success catches only typed `WoonLensError` source outcomes; unexpected
   exceptions remain visible to error monitoring instead of being mislabeled as
   missing data.
+- The live comparison service bounds fan-out to two through five unique homes,
+  starts their overview workflows concurrently, and preserves input order in
+  the response.
 - Independent source calls may run concurrently only through bounded structured
   concurrency.
 

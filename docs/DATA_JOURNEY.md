@@ -543,6 +543,27 @@ Each populated section carries its own source metadata in the actual API
 response. Failure entries contain only stable reason codes and never provider
 payloads, credentials, or exception text.
 
+### From one overview to a live comparison
+
+The core guest comparison endpoint is:
+
+```http
+POST /api/v1/comparisons/live
+```
+
+It accepts two to five unique official address UUIDs, preserves their order,
+and starts their overview journeys concurrently. One unavailable address does
+not erase other homes. The response contains eight deliberately stable metrics:
+BAG registered area, unambiguous construction year, energy class, EP-Online
+thermal-zone area, energy demand, primary fossil energy, renewable-energy
+share, and CBS neighbourhood average WOZ.
+
+For each numeric metric, the first available selected home is the baseline and
+later values receive a same-definition delta. Energy class remains categorical.
+BAG registered area is never subtracted from EP-Online thermal-zone area, and
+neighbourhood WOZ is explicitly local context rather than a valuation of the
+selected property.
+
 ### Provenance travels with every value
 
 Every normalized value must retain:
