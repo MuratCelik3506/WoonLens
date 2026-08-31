@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from woonlens.adapters.sources.cbs.client import CbsAdministrativeContextAdapter
 from woonlens.adapters.sources.cbs.statline_client import CbsStatlineIndicatorsAdapter
+from woonlens.adapters.sources.ep_online.client import EpOnlineEnergyRegistrationAdapter
 from woonlens.adapters.sources.pdok.client import (
     PdokBagAddressAdapter,
     PdokLocationSearchAdapter,
@@ -14,6 +15,7 @@ from woonlens.adapters.sources.pdok.property_client import PdokBagPropertyAdapte
 from woonlens.application.errors import WoonLensError
 from woonlens.application.services.addresses import AddressService
 from woonlens.application.services.administrative import AdministrativeContextService
+from woonlens.application.services.energy import EnergyRegistrationService
 from woonlens.application.services.indicators import NeighborhoodIndicatorsService
 from woonlens.application.services.property import PropertyDetailsService
 from woonlens.bootstrap.settings import Settings, get_settings
@@ -28,6 +30,7 @@ def create_app(
     administrative_context_service: AdministrativeContextService | None = None,
     neighborhood_indicators_service: NeighborhoodIndicatorsService | None = None,
     property_details_service: PropertyDetailsService | None = None,
+    energy_registration_service: EnergyRegistrationService | None = None,
 ) -> FastAPI:
     """Create the HTTP application with explicit configuration."""
     resolved_settings = settings or get_settings()
@@ -46,6 +49,8 @@ def create_app(
                 )
             if property_details_service is not None:
                 app.state.property_details_service = property_details_service
+            if energy_registration_service is not None:
+                app.state.energy_registration_service = energy_registration_service
             yield
             return
 
@@ -100,6 +105,15 @@ def create_app(
                     client,
                     str(resolved_settings.pdok_bag_api_url),
                     max_related_buildings=(resolved_settings.bag_max_related_buildings),
+                ),
+            )
+            secret = resolved_settings.ep_online_api_key
+            app.state.energy_registration_service = EnergyRegistrationService(
+                bag_adapter,
+                EpOnlineEnergyRegistrationAdapter(
+                    client,
+                    str(resolved_settings.ep_online_api_url),
+                    secret.get_secret_value() if secret is not None else None,
                 ),
             )
             yield

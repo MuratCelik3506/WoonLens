@@ -296,6 +296,16 @@ requests. Provider results are request-scoped and are not persisted or cached.
 
 ### Local Credential Setup
 
+Implemented endpoint:
+
+```http
+GET /api/v1/addresses/{address_id}/energy-registration
+```
+
+The public endpoint accepts only the address UUID produced by official address
+search. WoonLens resolves that UUID again and derives the BAG residential-unit
+ID internally before contacting EP-Online.
+
 The repository contains a committed `.env.example` and a Git-ignored `.env`.
 Add the personal production key only to `.env`:
 
@@ -303,9 +313,10 @@ Add the personal production key only to `.env`:
 WOONLENS_EP_ONLINE_API_KEY=your-personal-key
 ```
 
-Never add the key to `.env.example`, source code, test fixtures, screenshots,
-issues, or documentation. Self-hosted users must obtain and configure their own
-key.
+`.env.example` contains only an empty variable as a safe configuration hint.
+Never add a populated key to `.env.example`, source code, test fixtures,
+screenshots, issues, or documentation. Self-hosted users must obtain and
+configure their own key.
 
 ### Request
 
@@ -428,6 +439,14 @@ types are `xml`, `csv`, and `xlsx`, but bulk-file processing is out of scope.
 The live API returned many unrelated historical registrations for it. WoonLens
 must reject this value locally and must verify that every returned
 `BAGVerblijfsobjectID` equals the requested non-placeholder BAG ID.
+
+### Implemented response selection
+
+WoonLens validates every returned `BAGVerblijfsobjectID`, removes registrations
+whose `Geldig_tot` date has passed, and selects the remaining record with the
+latest `Registratiedatum`. An empty response or a response containing only
+expired registrations becomes a typed not-found result. The complete upstream
+array is discarded when the request ends.
 
 ### Complete v5 Field Processing Plan
 
@@ -806,10 +825,11 @@ Every audit result must retain:
 
 ## Next Verification Steps
 
-1. Test expired-label, multiple-label, and no-label EP-Online responses.
+1. Perform an authenticated EP-Online smoke test when a personal key is
+   configured locally; never capture the raw response or credential.
 2. Download the complete Luchtmeetnet station catalogue and calculate the
    nearest station that supports each requested component.
 3. Verify pollutant units from official metadata.
 4. Turn every field rule in this document into adapter contract tests.
-5. Add synthetic or minimized redacted contract fixtures after the first
-   adapter implementation; runtime provider responses must not become fixtures.
+5. Continue using synthetic contract fixtures; runtime provider responses must
+   not become fixtures.
