@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-page: var(--woon-page);
+  --color-surface: var(--woon-surface);
+  --color-ink: var(--woon-ink);
+  --color-muted: var(--woon-muted);
+  --color-border: var(--woon-border);
+  --color-accent: var(--woon-accent);
+  --color-accent-soft: var(--woon-accent-soft);
+  --font-sans: var(--woon-font-sans);
+}
+
+:root {
+  --woon-page: #f4f2ec;
+  --woon-surface: #fffefa;
+  --woon-ink: #142b35;
+  --woon-muted: #5b6c73;
+  --woon-border: #d5ddd8;
+  --woon-accent: #176b62;
+  --woon-accent-soft: #e1efeb;
+  --woon-focus: #0c8175;
+  --woon-font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --woon-page: #121817;
+    --woon-surface: #1b2422;
+    --woon-ink: #eef6f2;
+    --woon-muted: #aebdb8;
+    --woon-border: #354540;
+    --woon-accent: #6fc7b5;
+    --woon-accent-soft: #213d37;
+    --woon-focus: #8bdcca;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--woon-page);
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--woon-page);
+  color: var(--woon-ink);
+  font-family: var(--woon-font-sans);
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.2em;
+}
+
+:focus-visible {
+  outline: 3px solid var(--woon-focus);
+  outline-offset: 3px;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

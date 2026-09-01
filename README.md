@@ -79,8 +79,10 @@ valuation, or building-inspection advice.
 
 ## Development status
 
-The backend foundation and first guest live-overview use case are implemented
-with Python 3.13, FastAPI, `uv`, and Docker. Official provider responses remain
+The backend foundation and guest live-comparison use case are implemented with
+Python 3.13, FastAPI, `uv`, and Docker. A Next.js and TypeScript frontend
+foundation provides the responsive application shell, design tokens, transient
+query defaults, and browser-test harness. Official provider responses remain
 transient and no comparison database is used.
 
 ### Run locally
@@ -88,11 +90,12 @@ transient and no comparison database is used.
 Docker is the canonical runtime:
 
 ```bash
-docker compose up --build api
+docker compose up --build api frontend
 curl http://localhost:8000/api/v1/health
 ```
 
-The expected response is `{"status":"ok"}`. Run every implemented Python
+Open `http://localhost:3000` for the web shell. The expected API response is
+`{"status":"ok"}`. Run every implemented Python
 quality gate in the same container environment:
 
 ```bash

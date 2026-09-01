@@ -21,6 +21,9 @@ node_modules/
 .next/
 out/
 coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
 
 # Local databases and downloaded source data
 *.db

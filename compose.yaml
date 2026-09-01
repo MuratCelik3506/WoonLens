@@ -20,3 +20,31 @@ services:
       target: development
     command: ["sh", "-c", "ruff format --check . && ruff check . && mypy && lint-imports && pytest"]
     profiles: ["tools"]
+
+  frontend:
+    build:
+      context: ./frontend
+      target: development
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_WOONLENS_API_BASE_URL: http://localhost:8000
+      WOONLENS_API_BASE_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - frontend_next_cache:/app/.next
+    init: true
+
+  frontend-check:
+    build:
+      context: ./frontend
+      target: check
+    environment:
+      NEXT_PUBLIC_WOONLENS_API_BASE_URL: http://localhost:8000
+      WOONLENS_API_BASE_URL: http://api:8000
+    profiles: ["tools"]
+
+volumes:
+  frontend_next_cache:
