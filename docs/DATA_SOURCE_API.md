@@ -926,6 +926,34 @@ not persist the request, provider payloads, normalized overviews, comparison,
 report, or filename. Credentials, authorization headers, signed URLs, raw
 provider bodies, and internal exception text are excluded from the contract.
 
+### Transient PDF presentation
+
+```http
+POST /api/v1/comparison-downloads/pdf
+Content-Type: application/json
+```
+
+The request body and live data journey are identical to the JSON evidence
+report. A successful response uses `application/pdf`, a safe
+`woonlens-comparison-<UTC timestamp>.pdf` attachment filename, and
+`Cache-Control: no-store`.
+
+The landscape A4 document presents:
+
+- report and comparison-rule versions plus UTC generation time;
+- compared addresses in request order;
+- one value or explicit missing reason per metric and home;
+- versioned interpretations and cross-source audits;
+- unavailable-section warnings and comparison notices;
+- provider, dataset, retrieval time, and license metadata;
+- required limitations and a non-retention statement; and
+- a footer and page number on every page.
+
+Tables can continue across pages with repeated column headers. PDF generation
+uses only the normalized evidence model; it does not embed raw provider payloads
+or hidden attachments. The bytes are streamed in the response and are never
+written to server-side storage.
+
 ## Comparison and Audit Contract
 
 WoonLens compares transient normalized views, but it must not treat every unequal

@@ -112,6 +112,7 @@ GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/energy-registration
 GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/overview
 POST /api/v1/comparisons/live
 POST /api/v1/comparison-downloads/json
+POST /api/v1/comparison-downloads/pdf
 ```
 
 WoonLens uses the current PDOK Location API for search and the PDOK BAG OGC API
@@ -152,6 +153,9 @@ downloadable evidence report. It adds a report schema version, UTC generation
 time, source provenance, warnings, and limitations while retaining the full
 comparison and its rule version. The response is marked `no-store`; WoonLens
 does not write the report or its provider-derived facts to a database or file.
+The PDF endpoint uses the same evidence contract to produce a readable,
+multi-page A4 document with ordered homes, comparison tables, interpretations,
+audits, unavailable-data warnings, sources, limitations, and page numbers.
 
 The project is currently in the Guest Live Comparison foundation phase. The
 backend runtime and its first official-data integrations are implemented; the

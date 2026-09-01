@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
 
+from woonlens.adapters.reports.pdf import ReportLabPdfRenderer
 from woonlens.adapters.sources.cbs.client import CbsAdministrativeContextAdapter
 from woonlens.adapters.sources.cbs.statline_client import CbsStatlineIndicatorsAdapter
 from woonlens.adapters.sources.ep_online.client import EpOnlineEnergyRegistrationAdapter
@@ -13,6 +14,7 @@ from woonlens.adapters.sources.pdok.client import (
 )
 from woonlens.adapters.sources.pdok.property_client import PdokBagPropertyAdapter
 from woonlens.application.errors import WoonLensError
+from woonlens.application.ports.reports import PdfReportRenderer
 from woonlens.application.services.addresses import AddressService
 from woonlens.application.services.administrative import AdministrativeContextService
 from woonlens.application.services.comparison import LiveHomeComparisonService
@@ -39,6 +41,7 @@ def create_app(
     home_overview_service: HomeOverviewService | None = None,
     comparison_service: LiveHomeComparisonService | None = None,
     report_service: ComparisonEvidenceReportService | None = None,
+    pdf_report_renderer: PdfReportRenderer | None = None,
 ) -> FastAPI:
     """Create the HTTP application with explicit configuration."""
     resolved_settings = settings or get_settings()
@@ -66,6 +69,9 @@ def create_app(
                 app.state.report_service = (
                     report_service
                     or ComparisonEvidenceReportService(comparison_service)
+                )
+                app.state.pdf_report_renderer = (
+                    pdf_report_renderer or ReportLabPdfRenderer()
                 )
             yield
             return
@@ -144,6 +150,7 @@ def create_app(
             app.state.report_service = ComparisonEvidenceReportService(
                 live_comparison_service
             )
+            app.state.pdf_report_renderer = ReportLabPdfRenderer()
             yield
 
     app = FastAPI(

@@ -1,8 +1,10 @@
 from datetime import UTC, datetime
+from io import BytesIO
 from uuid import UUID
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from pypdf import PdfReader
 
 from woonlens.application.services.addresses import AddressService
 from woonlens.application.services.comparison import LiveHomeComparisonService
@@ -147,3 +149,58 @@ def test_json_report_reuses_address_validation() -> None:
             json={"address_ids": [str(FIRST), str(FIRST)]},
         )
     assert response.status_code == 422
+
+
+def test_pdf_report_is_readable_deterministic_and_not_cached() -> None:
+    payload = {"address_ids": [str(FIRST), str(SECOND)]}
+    with TestClient(create_test_app()) as client:
+        response = client.post("/api/v1/comparison-downloads/pdf", json=payload)
+        repeated = client.post("/api/v1/comparison-downloads/pdf", json=payload)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["content-disposition"] == (
+        'attachment; filename="woonlens-comparison-20260831T100500Z.pdf"'
+    )
+    assert response.content.startswith(b"%PDF-")
+    assert response.content == repeated.content
+
+    reader = PdfReader(BytesIO(response.content))
+    assert len(reader.pages) >= 2
+    text = "\n".join(page.extract_text() for page in reader.pages)
+    assert "WoonLens comparison evidence" in text
+    assert "Home 1" in text
+    assert "Home 2" in text
+    assert "Metric comparison" in text
+    assert "Interpretations" in text
+    assert "Cross-source audits" in text
+    assert "Sources" in text
+    assert "Limitations" in text
+    assert "Page 1" in text
+
+
+def test_pdf_report_reuses_address_validation() -> None:
+    with TestClient(create_test_app()) as client:
+        response = client.post(
+            "/api/v1/comparison-downloads/pdf",
+            json={"address_ids": [str(FIRST), str(FIRST)]},
+        )
+    assert response.status_code == 422
+
+
+def test_pdf_report_supports_five_homes() -> None:
+    address_ids = [
+        "11111111-1111-4111-8111-111111111111",
+        "22222222-2222-4222-8222-222222222222",
+        "33333333-3333-4333-8333-333333333333",
+        "44444444-4444-4444-8444-444444444444",
+        "55555555-5555-4555-8555-555555555555",
+    ]
+    with TestClient(create_test_app()) as client:
+        response = client.post(
+            "/api/v1/comparison-downloads/pdf",
+            json={"address_ids": address_ids},
+        )
+    assert response.status_code == 200
+    assert PdfReader(BytesIO(response.content)).pages

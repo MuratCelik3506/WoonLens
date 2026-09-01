@@ -207,6 +207,7 @@ GET  /api/v1/addresses/suggest?q=...
 GET  /api/v1/addresses/resolve?id=...
 POST /api/v1/comparisons
 POST /api/v1/comparison-downloads/json
+POST /api/v1/comparison-downloads/pdf
 ```
 
 The public comparison use case:
