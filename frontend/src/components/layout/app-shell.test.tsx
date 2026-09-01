@@ -17,12 +17,4 @@ describe("AppShell", () => {
     expect(screen.getByRole("main")).toBeInTheDocument();
     expect(screen.getByText("API connection available")).toBeInTheDocument();
   });
-
-  it("keeps unfinished comparison actions explicitly unavailable", () => {
-    render(<AppShell />);
-
-    expect(screen.getByRole("searchbox")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Search" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Compare homes" })).toBeDisabled();
-  });
 });

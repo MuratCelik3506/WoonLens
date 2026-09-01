@@ -82,8 +82,9 @@ valuation, or building-inspection advice.
 The backend foundation and guest live-comparison use case are implemented with
 Python 3.13, FastAPI, `uv`, and Docker. A Next.js and TypeScript frontend
 foundation provides the responsive application shell, design tokens, transient
-query defaults, and browser-test harness. Official provider responses remain
-transient and no comparison database is used.
+query defaults, and browser-test harness. Guests can search official addresses
+and build an in-memory selection of two to five homes. Official provider
+responses remain transient and no comparison database is used.
 
 ### Run locally
 
