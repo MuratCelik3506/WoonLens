@@ -107,6 +107,10 @@ WoonLens must therefore treat RIVM data conservatively:
 - Store retrieval and export timestamps so later corrections can be detected.
 - Do not bundle or redistribute a raw RIVM dataset in a release until the
   applicable terms for that exact dataset have been confirmed.
+- Live WoonLens responses use only the three observations needed for the
+  current address context, attribute `Luchtmeetnet / RIVM`, and label the
+  license field `Terms require per-dataset verification` rather than inventing
+  a blanket license name.
 
 ## Repository data policy
 

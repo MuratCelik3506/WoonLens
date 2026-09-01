@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     bag_max_related_buildings: int = Field(default=10, ge=1, le=25)
     ep_online_api_url: HttpUrl = HttpUrl("https://public.ep-online.nl/api/v5")
     ep_online_api_key: SecretStr | None = None
+    luchtmeetnet_api_url: HttpUrl = HttpUrl("https://api.luchtmeetnet.nl/open_api")
+    rivm_luchtmeetnet_metadata_url: HttpUrl = HttpUrl(
+        "https://data.rivm.nl/data/luchtmeetnet/Metadata"
+    )
 
 
 @lru_cache

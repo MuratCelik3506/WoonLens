@@ -18,6 +18,11 @@ from woonlens.domain.addresses import (
     SourceMetadata,
 )
 from woonlens.domain.administrative import AdministrativeArea, AdministrativeContext
+from woonlens.domain.air_quality import (
+    AirQualityContext,
+    AirQualityObservation,
+    MonitoringStation,
+)
 from woonlens.domain.energy import EnergyRegistration, EnergyRegistrationDetails
 from woonlens.domain.indicators import NeighborhoodIndicator, NeighborhoodIndicators
 from woonlens.domain.overview import HomeOverview, UnavailableSection
@@ -305,6 +310,71 @@ class UnavailableSectionResponse(BaseModel):
         return cls(section=item.section, reason=item.reason)
 
 
+class MonitoringStationResponse(BaseModel):
+    id: str
+    name: str
+    operator: str
+    station_type: str
+    coordinates: CoordinatesResponse
+    distance_km: float
+
+    @classmethod
+    def from_domain(cls, station: MonitoringStation) -> Self:
+        return cls(
+            id=station.id,
+            name=station.name,
+            operator=station.operator,
+            station_type=station.station_type,
+            coordinates=CoordinatesResponse.from_domain(station.coordinates),
+            distance_km=station.distance_km,
+        )
+
+
+class AirQualityObservationResponse(BaseModel):
+    pollutant: str
+    label: str
+    value: float
+    unit: str
+    measured_from: datetime
+    measured_until: datetime
+    station: MonitoringStationResponse
+    status: str
+    scope: str
+
+    @classmethod
+    def from_domain(cls, item: AirQualityObservation) -> Self:
+        return cls(
+            pollutant=item.pollutant,
+            label=item.label,
+            value=item.value,
+            unit=item.unit,
+            measured_from=item.measured_from,
+            measured_until=item.measured_until,
+            station=MonitoringStationResponse.from_domain(item.station),
+            status=item.status,
+            scope=item.scope,
+        )
+
+
+class AirQualityContextResponse(BaseModel):
+    observations: list[AirQualityObservationResponse]
+    missing_pollutants: list[str]
+    source: SourceResponse
+    limitation: str
+
+    @classmethod
+    def from_domain(cls, context: AirQualityContext) -> Self:
+        return cls(
+            observations=[
+                AirQualityObservationResponse.from_domain(item)
+                for item in context.observations
+            ],
+            missing_pollutants=list(context.missing_pollutants),
+            source=SourceResponse.from_domain(context.source),
+            limitation=context.limitation,
+        )
+
+
 class HomeOverviewResponse(BaseModel):
     address: ResolvedAddressResponse
     property: PropertyDetailsResponse | None
@@ -312,6 +382,7 @@ class HomeOverviewResponse(BaseModel):
     administrative_context: AdministrativeContextResponse | None
     neighborhood_indicators: NeighborhoodIndicatorsResponse | None
     unavailable_sections: list[UnavailableSectionResponse]
+    air_quality: AirQualityContextResponse | None
 
     @classmethod
     def from_domain(cls, overview: HomeOverview) -> Self:
@@ -347,6 +418,11 @@ class HomeOverviewResponse(BaseModel):
                 UnavailableSectionResponse.from_domain(item)
                 for item in overview.unavailable_sections
             ],
+            air_quality=(
+                AirQualityContextResponse.from_domain(overview.air_quality)
+                if overview.air_quality is not None
+                else None
+            ),
         )
 
 

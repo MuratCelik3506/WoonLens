@@ -12,6 +12,7 @@ from woonlens.application.errors import (
 from woonlens.application.services.overview import HomeOverviewService
 from woonlens.domain.addresses import Coordinates, ResolvedAddress, SourceMetadata
 from woonlens.domain.administrative import AdministrativeArea, AdministrativeContext
+from woonlens.domain.air_quality import AirQualityContext
 from woonlens.domain.energy import EnergyRegistration, EnergyRegistrationDetails
 from woonlens.domain.indicators import NeighborhoodIndicator, NeighborhoodIndicators
 from woonlens.domain.property import PropertyDetails, ResidentialUnit
@@ -141,6 +142,23 @@ class IndicatorsStub:
         )
 
 
+class AirQualityStub:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error = error
+        self.coordinates: Coordinates | None = None
+
+    async def resolve(self, coordinates: Coordinates) -> AirQualityContext:
+        self.coordinates = coordinates
+        if self.error:
+            raise self.error
+        return AirQualityContext(
+            (),
+            ("NO2", "PM10", "PM2.5"),
+            SOURCE,
+            "Nearby station context",
+        )
+
+
 @pytest.mark.anyio
 async def test_composes_trusted_sources_and_starts_independent_work_concurrently() -> (
     None
@@ -180,6 +198,35 @@ async def test_keeps_successful_sections_when_optional_source_fails() -> None:
     assert result.neighborhood_indicators is not None
     assert result.unavailable_sections[0].section == "energy_registration"
     assert result.unavailable_sections[0].reason == "source_configuration_error"
+
+
+@pytest.mark.anyio
+async def test_composes_air_quality_and_isolates_its_failure() -> None:
+    air_quality = AirQualityStub()
+    result = await HomeOverviewService(
+        AddressSpy(),
+        PropertyStub(),
+        EnergyStub(),
+        ContextStub(),
+        IndicatorsStub(),
+        air_quality,
+    ).resolve(ADDRESS_ID)
+    assert air_quality.coordinates == Coordinates(4.9, 52.37)
+    assert result.air_quality is not None
+
+    failed = await HomeOverviewService(
+        AddressSpy(),
+        PropertyStub(),
+        EnergyStub(),
+        ContextStub(),
+        IndicatorsStub(),
+        AirQualityStub(SourceUnavailableError()),
+    ).resolve(ADDRESS_ID)
+    assert failed.air_quality is None
+    assert any(
+        item.section == "air_quality" and item.reason == "source_unavailable"
+        for item in failed.unavailable_sections
+    )
 
 
 @pytest.mark.anyio

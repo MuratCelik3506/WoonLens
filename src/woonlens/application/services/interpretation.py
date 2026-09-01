@@ -9,7 +9,7 @@ from woonlens.domain.comparison import (
     SourceAudit,
 )
 
-RULES_VERSION = "1.0.0"
+RULES_VERSION = "1.1.0"
 
 
 def _usable(metric: MetricComparison) -> list[ComparedValue]:
@@ -89,6 +89,28 @@ def _energy_class(metric: MetricComparison) -> ComparisonInsight:
     )
 
 
+def _station_context(metric: MetricComparison) -> ComparisonInsight:
+    usable = _usable(metric)
+    if not usable:
+        return ComparisonInsight(
+            f"{metric.metric.key}.availability",
+            metric.metric.key,
+            "insufficient_data",
+            (),
+            "No home has a recent compatible monitoring-station reading for "
+            "this pollutant.",
+        )
+    return ComparisonInsight(
+        f"{metric.metric.key}.station_context",
+        metric.metric.key,
+        "not_ranked",
+        tuple(value.address_id for value in usable),
+        "Nearby-station observations are shown as environmental context and are "
+        "not ranked because station distance, type, weather, and measurement time "
+        "can differ between homes.",
+    )
+
+
 INSIGHT_RULES: dict[
     str,
     tuple[Callable[[list[float | int]], float | int], str, str],
@@ -143,6 +165,9 @@ def interpret_metrics(
 ) -> tuple[ComparisonInsight, ...]:
     insights = []
     for metric in metrics:
+        if metric.metric.key.startswith("air_quality_"):
+            insights.append(_station_context(metric))
+            continue
         if metric.metric.key == "energy_class":
             insights.append(_energy_class(metric))
             continue

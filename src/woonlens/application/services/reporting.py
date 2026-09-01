@@ -58,6 +58,8 @@ def _overview_sources(overview: HomeOverview) -> tuple[SourceMetadata, ...]:
         sources.extend(overview.administrative_context.sources)
     if overview.neighborhood_indicators is not None:
         sources.append(overview.neighborhood_indicators.source)
+    if overview.air_quality is not None:
+        sources.append(overview.air_quality.source)
     return tuple(sources)
 
 

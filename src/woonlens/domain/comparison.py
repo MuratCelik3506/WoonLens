@@ -94,7 +94,7 @@ class LiveHomeComparison:
     homes: tuple[ComparedHome, ...]
     metrics: tuple[MetricComparison, ...]
     notices: tuple[ComparisonNotice, ...]
-    rules_version: str = "1.0.0"
+    rules_version: str = "1.1.0"
     insights: tuple[ComparisonInsight, ...] = ()
     audits: tuple[SourceAudit, ...] = ()
 

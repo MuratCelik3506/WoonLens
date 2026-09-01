@@ -8,6 +8,7 @@ from woonlens.adapters.reports.pdf import ReportLabPdfRenderer
 from woonlens.adapters.sources.cbs.client import CbsAdministrativeContextAdapter
 from woonlens.adapters.sources.cbs.statline_client import CbsStatlineIndicatorsAdapter
 from woonlens.adapters.sources.ep_online.client import EpOnlineEnergyRegistrationAdapter
+from woonlens.adapters.sources.luchtmeetnet.client import LuchtmeetnetAirQualityAdapter
 from woonlens.adapters.sources.pdok.client import (
     PdokBagAddressAdapter,
     PdokLocationSearchAdapter,
@@ -143,6 +144,11 @@ def create_app(
                 energy_adapter,
                 administrative_adapter,
                 indicators_adapter,
+                LuchtmeetnetAirQualityAdapter(
+                    client,
+                    str(resolved_settings.luchtmeetnet_api_url),
+                    str(resolved_settings.rivm_luchtmeetnet_metadata_url),
+                ),
             )
             app.state.home_overview_service = overview_service
             live_comparison_service = LiveHomeComparisonService(overview_service)

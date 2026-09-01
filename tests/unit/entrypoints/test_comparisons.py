@@ -16,6 +16,11 @@ from woonlens.domain.addresses import (
     ResolvedAddress,
     SourceMetadata,
 )
+from woonlens.domain.air_quality import (
+    AirQualityContext,
+    AirQualityObservation,
+    MonitoringStation,
+)
 from woonlens.domain.overview import HomeOverview, UnavailableSection
 from woonlens.entrypoints.api import create_app
 
@@ -51,6 +56,30 @@ class OverviewFake:
             Coordinates(4.9, 52.37),
             SOURCE,
         )
+        station = MonitoringStation(
+            "NL00001",
+            "Station",
+            "LML",
+            "background",
+            Coordinates(4.91, 52.38),
+            1.25,
+        )
+        air_quality = AirQualityContext(
+            (
+                AirQualityObservation(
+                    "NO2",
+                    "stikstofdioxide",
+                    12.5,
+                    "µg/m³",
+                    datetime(2026, 8, 31, 9, tzinfo=UTC),
+                    datetime(2026, 8, 31, 10, tzinfo=UTC),
+                    station,
+                ),
+            ),
+            ("PM10", "PM2.5"),
+            SOURCE,
+            "Station context only",
+        )
         return HomeOverview(
             address,
             None,
@@ -63,6 +92,7 @@ class OverviewFake:
                 UnavailableSection("administrative_context", "source_unavailable"),
                 UnavailableSection("neighborhood_indicators", "dependency_unavailable"),
             ),
+            air_quality,
         )
 
 
@@ -91,9 +121,31 @@ def test_endpoint_preserves_order_and_returns_metric_contract() -> None:
     assert body["metrics"][0]["metric"]["key"] == "registered_area_m2"
     assert body["metrics"][0]["values"][0]["missing_reason"] == "source_unavailable"
     assert body["notices"][0]["code"] == "area_definition_difference"
-    assert body["rules_version"] == "1.0.0"
+    assert body["rules_version"] == "1.1.0"
     assert body["insights"][0]["classification"] == "insufficient_data"
     assert body["audits"][0]["classification"] == "missing"
+    assert body["homes"][0]["overview"]["air_quality"]["observations"][0] == {
+        "pollutant": "NO2",
+        "label": "stikstofdioxide",
+        "value": 12.5,
+        "unit": "µg/m³",
+        "measured_from": "2026-08-31T09:00:00Z",
+        "measured_until": "2026-08-31T10:00:00Z",
+        "station": {
+            "id": "NL00001",
+            "name": "Station",
+            "operator": "LML",
+            "station_type": "background",
+            "coordinates": {
+                "longitude": 4.91,
+                "latitude": 52.38,
+                "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+            },
+            "distance_km": 1.25,
+        },
+        "status": "current-unratified",
+        "scope": "monitoring-station",
+    }
 
 
 def test_endpoint_rejects_count_and_duplicate_addresses() -> None:
@@ -124,7 +176,7 @@ def test_json_report_is_downloadable_attributed_and_not_cached() -> None:
     )
     body = response.json()
     assert body["schema_version"] == "1.0.0"
-    assert body["rules_version"] == "1.0.0"
+    assert body["rules_version"] == "1.1.0"
     assert body["generated_at"] == "2026-08-31T10:05:00Z"
     assert [home["address_id"] for home in body["comparison"]["homes"]] == [
         str(FIRST),

@@ -56,7 +56,7 @@ async def test_report_is_versioned_attributed_and_deterministic() -> None:
 
     assert report.schema_version == "1.0.0"
     assert report.generated_at == GENERATED_AT
-    assert report.comparison.rules_version == "1.0.0"
+    assert report.comparison.rules_version == "1.1.0"
     assert report.sources == (SOURCE,)
     assert len(report.limitations) == 4
 

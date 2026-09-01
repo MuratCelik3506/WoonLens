@@ -470,15 +470,18 @@ must show:
 - Measurement window
 - Whether the value is provisional or ratified when known
 
-The current example proves the endpoint, not the final station-selection
-algorithm. Production use still requires a station catalogue and a documented
-rule for selecting the nearest station that supports the requested pollutant.
-Distance alone may not make a traffic station representative of residential
-background exposure.
+The implemented selection downloads the current official RIVM location,
+measurement-series, and component catalogues during the request. It excludes
+ended records and selects the nearest active compatible station independently
+for NO2, PM10, and PM2.5 using great-circle distance. Different pollutants may
+use different stations. Distance alone does not make a traffic station
+representative of residential background exposure, so station type and distance
+remain visible and the values are never ranked.
 
-The measurement response does not itself provide a unit. WoonLens must verify
-units from official component or bulk-file metadata before presenting a value.
-Until then, a numeric value without a verified unit is not display-ready.
+The measurement response does not itself provide a unit. WoonLens joins the
+pollutant to current official component metadata and rejects incomplete unit
+metadata. The RIVM catalogue code `PM2.5` maps explicitly to live API formula
+`PM25`.
 
 Long historical ingestion is outside the stateless product scope. Only live
 measurements needed for the current comparison are requested.
@@ -702,9 +705,9 @@ CbsStatLineClient
     get_observations(dataset_id, area_code, measure_ids)
 
 LuchtmeetnetClient
-    list_or_load_stations()
-    get_station(station_id)
-    get_measurements(station_id, pollutant, time_range)
+    load_active_locations_series_and_components()
+    select_nearest_compatible_station(address_coordinates, pollutant)
+    get_latest_measurements(selected_station_ids)
 ```
 
 An orchestration service owns the journey. Individual clients must not know
@@ -721,6 +724,8 @@ about frontend presentation or silently join unrelated sources.
 - EP-Online BAG join fields
 - CBS OData service structure and selected 2024 measure metadata
 - Luchtmeetnet station and measurement response shapes
+- Nearest active compatible station selection for NO2, PM10, and PM2.5
+- Official pollutant labels and units from RIVM component metadata
 - The cross-source identifier chain for the verified address
 
 ### Must be resolved during implementation
@@ -730,10 +735,9 @@ about frontend presentation or silently join unrelated sources.
 - Upstream schema-contract monitoring
 - CBS dataset discovery and per-measure year-selection automation
 - CBS special-value and `ValueAttribute` mapping catalogue
-- Nearest compatible Luchtmeetnet station selection
-- Official pollutant unit metadata
 - Rules for station representativeness, not only distance
-- RIVM provisional versus ratified status mapping
+- Promotion from `current-unratified` to ratified status when the live source
+  publishes a trustworthy status field
 - Account-data minimisation and deletion rules for saved search references
 - Re-verification of third-party terms before public release
 
