@@ -483,13 +483,34 @@ Until then, a numeric value without a verified unit is not display-ready.
 Long historical ingestion is outside the stateless product scope. Only live
 measurements needed for the current comparison are requested.
 
+### From a live comparison to a JSON evidence report
+
+`POST /api/v1/comparison-downloads/json` starts with the same two-to-five
+official address UUIDs and reruns the live comparison pipeline. The application
+then wraps that request-scoped result with report schema version `1.0.0`, a UTC
+generation time, a deduplicated source index, comparison warnings, and explicit
+limitations. The existing ordered homes, metrics, rule version, insights, and
+audits remain intact.
+
+Each successful fact continues to carry provider, dataset, retrieval time, and
+license metadata. Missing optional sections keep their safe reason codes. The
+report never contains provider credentials, headers, signed URLs, raw response
+bodies, or exception details.
+
+The API serializes the report directly into an attachment response marked
+`Cache-Control: no-store`. It creates no server-side report file and performs no
+database write. Once the HTTP request finishes, the application retains no copy
+of the generated report or its provider-derived contents.
+
 ## Chapter 8 — The Sources Meet in a Transient Normalized View
 
 The source adapters do not merge raw JSON objects directly. Each adapter maps
 its response into a typed fragment while retaining provenance.
 
 Raw payloads and normalized values exist only within request-scoped processing.
-They are not written to application storage, logs, reports, or caches.
+They are not written to application storage, logs, server-side report files,
+or caches. A user-requested download serializes only the normalized evidence
+contract directly into the current response.
 
 Guest and signed-in users use this same live pipeline. A signed-in user may save
 a favourite or named comparison reference, but reopening it starts the source

@@ -20,11 +20,13 @@ from woonlens.application.services.energy import EnergyRegistrationService
 from woonlens.application.services.indicators import NeighborhoodIndicatorsService
 from woonlens.application.services.overview import HomeOverviewService
 from woonlens.application.services.property import PropertyDetailsService
+from woonlens.application.services.reporting import ComparisonEvidenceReportService
 from woonlens.bootstrap.settings import Settings, get_settings
 from woonlens.entrypoints.api.addresses import router as addresses_router
 from woonlens.entrypoints.api.comparisons import router as comparisons_router
 from woonlens.entrypoints.api.health import router as health_router
 from woonlens.entrypoints.api.problems import woonlens_error_handler
+from woonlens.entrypoints.api.reports import router as reports_router
 
 
 def create_app(
@@ -36,6 +38,7 @@ def create_app(
     energy_registration_service: EnergyRegistrationService | None = None,
     home_overview_service: HomeOverviewService | None = None,
     comparison_service: LiveHomeComparisonService | None = None,
+    report_service: ComparisonEvidenceReportService | None = None,
 ) -> FastAPI:
     """Create the HTTP application with explicit configuration."""
     resolved_settings = settings or get_settings()
@@ -60,6 +63,10 @@ def create_app(
                 app.state.home_overview_service = home_overview_service
             if comparison_service is not None:
                 app.state.comparison_service = comparison_service
+                app.state.report_service = (
+                    report_service
+                    or ComparisonEvidenceReportService(comparison_service)
+                )
             yield
             return
 
@@ -132,7 +139,11 @@ def create_app(
                 indicators_adapter,
             )
             app.state.home_overview_service = overview_service
-            app.state.comparison_service = LiveHomeComparisonService(overview_service)
+            live_comparison_service = LiveHomeComparisonService(overview_service)
+            app.state.comparison_service = live_comparison_service
+            app.state.report_service = ComparisonEvidenceReportService(
+                live_comparison_service
+            )
             yield
 
     app = FastAPI(
@@ -147,6 +158,7 @@ def create_app(
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(addresses_router, prefix="/api/v1")
     app.include_router(comparisons_router, prefix="/api/v1")
+    app.include_router(reports_router, prefix="/api/v1")
     return app
 
 
