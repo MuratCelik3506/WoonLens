@@ -56,6 +56,10 @@ WoonLens storage.
 
 ## Primary Screens
 
+Detailed interaction, responsive, content, accessibility, and frontend
+requirements are defined in
+[`UI_UX_SPECIFICATION.md`](UI_UX_SPECIFICATION.md).
+
 ### 1. Home and Search
 
 Purpose: build a valid comparison set.

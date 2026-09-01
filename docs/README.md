@@ -9,6 +9,7 @@ contracts for WoonLens.
 | --- | --- |
 | [`PROJECT_SCOPE.md`](PROJECT_SCOPE.md) | Authoritative MVP boundaries, delivery phases, and success criteria |
 | [`PRODUCT_FEATURE_MAP.md`](PRODUCT_FEATURE_MAP.md) | Guest and account journeys, screens, use cases, information architecture, and delivery order |
+| [`UI_UX_SPECIFICATION.md`](UI_UX_SPECIFICATION.md) | Guest-first interaction, responsive presentation, neutrality, provenance, accessibility, and frontend UI contract |
 | [`../PROJECT_PROPOSAL.md`](../PROJECT_PROPOSAL.md) | Product problem, audience, differentiation, and high-level direction |
 | [`../README.md`](../README.md) | Repository overview and entry point |
 
