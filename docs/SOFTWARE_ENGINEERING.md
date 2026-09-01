@@ -319,6 +319,13 @@ Live responses retain independent response-schema, adapter-contract,
 transformation, rule, and download-schema versions. Provider payloads,
 normalized facts, comparison results, and generated reports are not persisted.
 
+JSON evidence reports are produced by an application service over the existing
+live comparison use case. A timezone-aware clock is injected for deterministic
+tests. The HTTP adapter owns JSON serialization, the attachment filename, and
+the `Cache-Control: no-store` response header; the domain and application layers
+remain unaware of FastAPI. Report schema versions and comparison rule versions
+are separate because either contract can evolve independently.
+
 ### Persistence boundary
 
 PostgreSQL may store optional accounts and minimum user-owned saved-search,

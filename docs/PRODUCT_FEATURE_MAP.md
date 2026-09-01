@@ -206,7 +206,7 @@ GET  /api/v1/health
 GET  /api/v1/addresses/suggest?q=...
 GET  /api/v1/addresses/resolve?id=...
 POST /api/v1/comparisons
-POST /api/v1/comparison-downloads
+POST /api/v1/comparison-downloads/json
 ```
 
 The public comparison use case:

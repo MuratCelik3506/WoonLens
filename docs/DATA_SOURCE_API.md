@@ -884,6 +884,48 @@ Interpretation messages use normalized values only. They contain no raw
 provider response, exception text, signed URL, or credential. Updating a rule's
 meaning requires a new rule ID or rules version.
 
+## Transient JSON Evidence Report Contract
+
+```http
+POST /api/v1/comparison-downloads/json
+Content-Type: application/json
+
+{
+  "address_ids": [
+    "690240c0-fc13-59d9-8e98-2ef441237a54",
+    "11111111-1111-4111-8111-111111111111"
+  ]
+}
+```
+
+This endpoint accepts the same two-to-five unique address UUID contract as the
+live comparison. It runs the same source retrieval, normalization, comparison,
+interpretation, and audit pipeline; it does not accept provider facts supplied
+by a client.
+
+The `1.0.0` report contract contains:
+
+| Field | Meaning |
+| --- | --- |
+| `schema_version` | Version of the downloadable report structure |
+| `generated_at` | Timezone-aware UTC report generation time |
+| `rules_version` | Version of the interpretation rules used |
+| `comparison` | Ordered homes, metrics, notices, insights, and audits |
+| `sources` | Deduplicated provider, dataset, retrieval time, and license records |
+| `warnings` | Human-readable comparison notices |
+| `limitations` | Boundaries against valuation, inspection, and false certainty |
+
+Successful output uses `application/json`, a safe
+`woonlens-comparison-<UTC timestamp>.json` attachment filename, and
+`Cache-Control: no-store`. Source metadata remains present both beside the
+relevant home facts and in the report-level source index. Optional unavailable
+sections and missing metric reasons remain explicit; no value is synthesized.
+
+The generated document exists only as the current HTTP response. WoonLens does
+not persist the request, provider payloads, normalized overviews, comparison,
+report, or filename. Credentials, authorization headers, signed URLs, raw
+provider bodies, and internal exception text are excluded from the contract.
+
 ## Comparison and Audit Contract
 
 WoonLens compares transient normalized views, but it must not treat every unequal

@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from woonlens.application.services.addresses import AddressService
 from woonlens.application.services.comparison import LiveHomeComparisonService
+from woonlens.application.services.reporting import ComparisonEvidenceReportService
 from woonlens.bootstrap.settings import Settings
 from woonlens.domain.addresses import (
     AddressSuggestion,
@@ -64,10 +65,15 @@ class OverviewFake:
 
 
 def create_test_app() -> FastAPI:
+    comparison_service = LiveHomeComparisonService(OverviewFake())
     return create_app(
         Settings(environment="test"),
         AddressService(SearchFake(), DetailsFake(), suggestion_limit=8),
-        comparison_service=LiveHomeComparisonService(OverviewFake()),
+        comparison_service=comparison_service,
+        report_service=ComparisonEvidenceReportService(
+            comparison_service,
+            clock=lambda: datetime(2026, 8, 31, 10, 5, tzinfo=UTC),
+        ),
     )
 
 
@@ -99,3 +105,45 @@ def test_endpoint_rejects_count_and_duplicate_addresses() -> None:
         )
     assert too_few.status_code == 422
     assert duplicate.status_code == 422
+
+
+def test_json_report_is_downloadable_attributed_and_not_cached() -> None:
+    with TestClient(create_test_app()) as client:
+        response = client.post(
+            "/api/v1/comparison-downloads/json",
+            json={"address_ids": [str(FIRST), str(SECOND)]},
+        )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["content-disposition"] == (
+        'attachment; filename="woonlens-comparison-20260831T100500Z.json"'
+    )
+    body = response.json()
+    assert body["schema_version"] == "1.0.0"
+    assert body["rules_version"] == "1.0.0"
+    assert body["generated_at"] == "2026-08-31T10:05:00Z"
+    assert [home["address_id"] for home in body["comparison"]["homes"]] == [
+        str(FIRST),
+        str(SECOND),
+    ]
+    assert body["sources"] == [
+        {
+            "provider": "Provider",
+            "dataset": "Dataset",
+            "retrieved_at": SOURCE.retrieved_at.isoformat().replace("+00:00", "Z"),
+            "license": "Terms",
+        }
+    ]
+    assert body["warnings"]
+    assert len(body["limitations"]) == 4
+
+
+def test_json_report_reuses_address_validation() -> None:
+    with TestClient(create_test_app()) as client:
+        response = client.post(
+            "/api/v1/comparison-downloads/json",
+            json={"address_ids": [str(FIRST), str(FIRST)]},
+        )
+    assert response.status_code == 422
