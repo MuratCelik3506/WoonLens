@@ -32,6 +32,7 @@ data/processed/
 
 # Temporary and local tooling files
 tmp/
+output/
 .DS_Store
 .idea/
 .vscode/

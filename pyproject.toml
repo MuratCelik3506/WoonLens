@@ -13,6 +13,7 @@ dependencies = [
   "fastapi>=0.116,<1",
   "httpx>=0.28,<1",
   "pydantic-settings>=2.10,<3",
+  "reportlab>=4.4,<5",
   "structlog>=25.4,<26",
   "uvicorn[standard]>=0.35,<1",
 ]
@@ -23,6 +24,7 @@ dev = [
   "mypy>=1.17,<2",
   "pytest>=8.4,<9",
   "pytest-cov>=6.2,<7",
+  "pypdf>=6.1,<7",
   "ruff>=0.12,<1",
 ]
 

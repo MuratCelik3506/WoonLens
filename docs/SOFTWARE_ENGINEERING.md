@@ -326,6 +326,14 @@ the `Cache-Control: no-store` response header; the domain and application layers
 remain unaware of FastAPI. Report schema versions and comparison rule versions
 are separate because either contract can evolve independently.
 
+The PDF renderer is an outbound adapter behind the application-level
+`PdfReportRenderer` protocol. ReportLab remains outside the domain and
+application layers. The API selects the renderer and owns HTTP media type,
+filename, and cache headers. Renderer tests use an invariant PDF canvas and an
+injected report clock so equal evidence produces deterministic bytes. Text
+extraction checks document content, while Poppler page rendering and visual
+inspection verify layout quality that extraction cannot prove.
+
 ### Persistence boundary
 
 PostgreSQL may store optional accounts and minimum user-owned saved-search,

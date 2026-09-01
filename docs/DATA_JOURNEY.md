@@ -502,6 +502,12 @@ The API serializes the report directly into an attachment response marked
 database write. Once the HTTP request finishes, the application retains no copy
 of the generated report or its provider-derived contents.
 
+The PDF route follows this identical application journey. Only the final
+presentation adapter changes: it lays out the normalized evidence as a
+landscape A4 document with repeating table headers, source attribution,
+limitations, and page numbers. PDF bytes are returned directly in the HTTP
+response and are not saved on the server.
+
 ## Chapter 8 — The Sources Meet in a Transient Normalized View
 
 The source adapters do not merge raw JSON objects directly. Each adapter maps
