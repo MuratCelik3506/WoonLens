@@ -39,6 +39,7 @@ describe("comparison proxy route", () => {
       homes: [first, second].map((addressId) => ({
         addressId,
         contextNotes: [],
+        details: [],
         displayName: null,
         sources: [],
         unavailableReason: "source_unavailable",

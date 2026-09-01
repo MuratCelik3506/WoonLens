@@ -326,6 +326,14 @@ remain visible through progressive disclosure. Selection changes invalidate the
 entire result and its explanations together so rule output cannot be attached to
 stale evidence.
 
+Per-home detail panels are projected from the overview already embedded in the
+live-comparison response. The frontend allowlists the displayed BAG, EP-Online,
+CBS, and Luchtmeetnet fields instead of rendering arbitrary provider payloads.
+Property, building, neighbourhood, and monitoring-station levels remain explicit;
+technical identifiers use progressive disclosure. Opening a detail panel performs
+no network request, and a selection change invalidates its details with the rest
+of the transient comparison.
+
 JSON evidence reports are produced by an application service over the existing
 live comparison use case. A timezone-aware clock is injected for deterministic
 tests. The HTTP adapter owns JSON serialization, the attachment filename, and

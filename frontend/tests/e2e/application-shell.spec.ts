@@ -50,6 +50,22 @@ test("searches and selects official addresses with the keyboard", async ({ page 
         homes: request.address_ids.map((addressId, index) => ({
           addressId,
           contextNotes: ["CBS neighbourhood reference year 2024"],
+          details: [
+            {
+              facts: [
+                { label: "BAG registered area", unit: "m²", value: 80 + index },
+                {
+                  label: "BAG residential-unit ID",
+                  unit: null,
+                  value: `059901000029542${index}`,
+                },
+              ],
+              level: "property",
+              limitation:
+                "BAG registered area is an official register value, not measured living area.",
+              title: "BAG property",
+            },
+          ],
           displayName: null,
           sources: [
             {
@@ -127,8 +143,16 @@ test("searches and selects official addresses with the keyboard", async ({ page 
   await expect(
     page.getByRole("heading", { name: "Factual differences, source by source" }),
   ).toBeVisible();
-  await expect(page.getByText("80 m²")).toBeVisible();
+  await expect(page.getByRole("cell", { name: "80 m²" })).toBeVisible();
   await expect(page.getByText("Not reported")).toBeVisible();
+  const details = page.getByRole("region", { name: "Official details by home" });
+  await details.getByText(/Home 1 · Westblaak 120/i).click();
+  await expect(
+    details.getByRole("heading", { name: "BAG property" }).first(),
+  ).toBeVisible();
+  await expect(details.getByText(/property level/i).first()).toBeVisible();
+  await details.getByText("Technical identifiers").first().click();
+  await expect(details.getByText("0599010000295420")).toBeVisible();
   const explanations = page.getByRole("region", { name: "Explainable differences" });
   await expect(explanations).toContainText("not an overall quality verdict");
   await explanations.getByText("Technical rule details").click();
@@ -150,6 +174,9 @@ test("searches and selects official addresses with the keyboard", async ({ page 
   ).not.toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Explainable differences" }),
+  ).not.toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Official details by home" }),
   ).not.toBeVisible();
   await expect(page.getByRole("button", { name: "Download JSON" })).not.toBeVisible();
 });

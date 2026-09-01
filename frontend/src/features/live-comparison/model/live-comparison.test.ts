@@ -27,7 +27,32 @@ function home(addressId: string, number: string) {
       air_quality: null,
       energy_registration: null,
       neighborhood_indicators: null,
-      property: null,
+      property: {
+        buildings: [
+          {
+            construction_year: 1992,
+            id: "0599100000000001",
+            residential_unit_count: 4,
+            status: "in use",
+            use_purposes: ["residential"],
+          },
+        ],
+        residential_unit: {
+          id: "0599010000295420",
+          registered_area_m2: 80,
+          status: "in use",
+          use_purposes: ["residential"],
+        },
+        source: {
+          dataset: "BAG",
+          license: "CC0",
+          provider: "PDOK",
+          retrieved_at: "2026-09-01T12:00:00Z",
+        },
+      },
+      unavailable_sections: [
+        { reason: "source_configuration_error", section: "energy_registration" },
+      ],
     },
     unavailable_reason: null,
   };
@@ -91,6 +116,9 @@ describe("parseLiveComparison", () => {
     expect(result.homes.map((item) => item.addressId)).toEqual([first, second]);
     expect(result.homes[0]?.displayName).toContain("Westblaak 120");
     expect(result.homes[0]?.sources[0]?.provider).toBe("PDOK");
+    expect(result.homes[0]?.details[0]?.title).toBe("BAG property");
+    expect(result.homes[0]?.details[1]?.level).toBe("building");
+    expect(result.homes[0]?.details[2]?.facts[0]?.value).toContain("Unavailable");
     expect(result.metrics[0]?.values[1]?.missingReason).toBe("not_reported");
     expect(result.insights[0]?.ruleId).toBe("registered_area_m2.extreme");
     expect(result.audits[0]?.values).toEqual([80, null]);

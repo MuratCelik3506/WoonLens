@@ -88,8 +88,10 @@ source-attributed comparison across property, energy, neighbourhood, and nearby
 monitoring-station context. The active guest comparison can be regenerated as a
 source-attributed JSON or PDF evidence download. Versioned backend rules also
 surface neutral factual differences and cross-source checks without producing a
-score or recommendation. Official provider responses and generated files remain
-transient, and no comparison database is used.
+score or recommendation. Guests can inspect request-scoped BAG, EP-Online, CBS,
+and monitoring-station detail panels from the same comparison snapshot; opening
+a panel does not trigger another provider request. Official provider responses
+and generated files remain transient, and no comparison database is used.
 
 ### Run locally
 

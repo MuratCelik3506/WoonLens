@@ -4,6 +4,7 @@ import type {
 } from "@/features/live-comparison/model/live-comparison";
 import { DownloadActions } from "@/features/comparison-downloads/components/download-actions";
 import { ExplainableEvidence } from "@/features/live-comparison/components/explainable-evidence";
+import { HomeDetailPanels } from "@/features/live-comparison/components/home-detail-panels";
 
 const sections = [
   {
@@ -197,6 +198,8 @@ export function ComparisonResults({
             );
           })}
         </div>
+
+        <HomeDetailPanels comparison={comparison} labels={labels} />
 
         <ExplainableEvidence comparison={comparison} labels={labels} />
 

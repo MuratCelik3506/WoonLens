@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { searchAddresses } from "@/features/address-search/api/address-suggestions";
@@ -66,6 +66,19 @@ function comparison(
     homes: [first, second].map((item) => ({
       addressId: item.id,
       contextNotes: [],
+      details: [
+        {
+          facts: [
+            { label: "BAG registered area", unit: "m²", value: 80 },
+            { label: "Usage purposes", unit: null, value: ["residential"] },
+            { label: "BAG residential-unit ID", unit: null, value: "0599010000295420" },
+          ],
+          level: "property",
+          limitation:
+            "BAG registered area is an official register value, not measured living area.",
+          title: "BAG property",
+        },
+      ],
       displayName: item.displayName,
       sources: [
         {
@@ -182,7 +195,7 @@ describe("ComparisonBuilder", () => {
         name: "Factual differences, source by source",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("80 m²")).toBeInTheDocument();
+    expect(screen.getAllByText("80 m²").length).toBeGreaterThan(0);
     expect(screen.getByText("Not reported")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Explainable differences" }),
@@ -195,6 +208,22 @@ describe("ComparisonBuilder", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Definition difference")).toBeInTheDocument();
     expect(screen.getByText("Not available from the source")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Official details by home" }),
+    ).toBeInTheDocument();
+    const firstPanel = screen
+      .getByText(`Home 1 · ${first.displayName}`)
+      .closest("details");
+    expect(firstPanel).not.toBeNull();
+    if (!firstPanel) throw new Error("first home detail panel was not rendered");
+    fireEvent.click(within(firstPanel).getByText(`Home 1 · ${first.displayName}`));
+    expect(
+      within(firstPanel).getByRole("heading", { name: "BAG property" }),
+    ).toBeInTheDocument();
+    expect(within(firstPanel).getByText(/property level/i)).toBeInTheDocument();
+    expect(within(firstPanel).getByText("80 m²")).toBeInTheDocument();
+    fireEvent.click(within(firstPanel).getByText("Technical identifiers"));
+    expect(within(firstPanel).getByText("0599010000295420")).toBeInTheDocument();
     expect(screen.queryByText(/winner|best home/i)).not.toBeInTheDocument();
 
     fireEvent.click(
@@ -205,6 +234,9 @@ describe("ComparisonBuilder", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "Explainable differences" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Official details by home" }),
     ).not.toBeInTheDocument();
   });
 
