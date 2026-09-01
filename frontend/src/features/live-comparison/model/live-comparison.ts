@@ -5,9 +5,23 @@ export type SourceMetadata = Readonly<{
   retrievedAt: string;
 }>;
 
+export type HomeDetailFact = Readonly<{
+  label: string;
+  value: number | string | readonly string[] | null;
+  unit: string | null;
+}>;
+
+export type HomeDetailSection = Readonly<{
+  facts: readonly HomeDetailFact[];
+  level: "property" | "building" | "neighborhood" | "monitoring-station";
+  limitation: string | null;
+  title: string;
+}>;
+
 export type ComparedHome = Readonly<{
   addressId: string;
   contextNotes: readonly string[];
+  details: readonly HomeDetailSection[];
   displayName: string | null;
   sources: readonly SourceMetadata[];
   unavailableReason: string | null;
@@ -100,6 +114,207 @@ function nullableText(value: unknown, label: string): string | null {
 function list(value: unknown, label: string): readonly unknown[] {
   if (!Array.isArray(value)) throw new TypeError(`${label} must be an array`);
   return value;
+}
+
+function optionalRecord(value: unknown, label: string): Record<string, unknown> | null {
+  return value === null || value === undefined ? null : record(value, label);
+}
+
+function detailValue(value: unknown, label: string): HomeDetailFact["value"] {
+  if (value === null || typeof value === "string" || typeof value === "number") {
+    return value;
+  }
+  if (Array.isArray(value)) return value.map((item) => text(item, label));
+  throw new TypeError(`${label} must be a scalar, string list, or null`);
+}
+
+function fact(
+  source: Record<string, unknown>,
+  key: string,
+  label: string,
+  unit: string | null = null,
+): HomeDetailFact {
+  return { label, unit, value: detailValue(source[key] ?? null, key) };
+}
+
+function collectDetails(
+  overview: Record<string, unknown>,
+): readonly HomeDetailSection[] {
+  const sections: HomeDetailSection[] = [];
+  const property = optionalRecord(overview.property, "property");
+  if (property) {
+    const unit = record(property.residential_unit, "residential_unit");
+    sections.push({
+      facts: [
+        fact(unit, "registered_area_m2", "BAG registered area", "m²"),
+        fact(unit, "use_purposes", "Usage purposes"),
+        fact(unit, "status", "Residential-unit status"),
+        fact(unit, "id", "BAG residential-unit ID"),
+      ],
+      level: "property",
+      limitation:
+        "BAG registered area is an official register value, not measured living area.",
+      title: "BAG property",
+    });
+    for (const [index, item] of list(property.buildings, "buildings").entries()) {
+      const building = record(item, "building");
+      sections.push({
+        facts: [
+          fact(building, "construction_year", "Construction year", "year"),
+          fact(building, "use_purposes", "Usage purposes"),
+          fact(building, "status", "Building status"),
+          fact(building, "residential_unit_count", "Residential-unit count"),
+          fact(building, "id", "BAG building ID"),
+        ],
+        level: "building",
+        limitation: null,
+        title: `BAG building ${index + 1}`,
+      });
+    }
+  }
+
+  const energy = optionalRecord(overview.energy_registration, "energy_registration");
+  if (energy) {
+    const registration = record(energy.registration, "energy registration");
+    sections.push({
+      facts: [
+        fact(registration, "energy_class", "Energy class"),
+        fact(registration, "registration_date", "Registration date"),
+        fact(registration, "inspection_date", "Inspection date"),
+        fact(registration, "valid_until", "Valid until"),
+        fact(registration, "assessment_type", "Assessment type"),
+        fact(registration, "registration_status", "Registration status"),
+        fact(registration, "building_type", "Building type"),
+        fact(registration, "building_subtype", "Building subtype"),
+        fact(registration, "thermal_zone_area_m2", "Thermal-zone area", "m²"),
+        fact(registration, "energy_demand_kwh_m2_year", "Energy demand", "kWh/m²/year"),
+        fact(
+          registration,
+          "primary_fossil_energy_kwh_m2_year",
+          "Primary fossil energy",
+          "kWh/m²/year",
+        ),
+        fact(registration, "renewable_energy_share_pct", "Renewable-energy share", "%"),
+        fact(registration, "calculated_co2_kg_m2_year", "Calculated CO₂", "kg/m²/year"),
+        fact(
+          registration,
+          "calculated_energy_use_kwh_m2_year",
+          "Calculated energy use",
+          "kWh/m²/year",
+        ),
+        fact(registration, "bag_object_id", "BAG object ID"),
+        fact(registration, "bag_building_ids", "BAG building IDs"),
+      ],
+      level: "property",
+      limitation:
+        "EP-Online thermal-zone area uses a different definition from BAG registered area.",
+      title: "EP-Online energy registration",
+    });
+  }
+
+  const neighborhood = optionalRecord(
+    overview.neighborhood_indicators,
+    "neighborhood_indicators",
+  );
+  if (neighborhood) {
+    const area = record(neighborhood.neighborhood, "neighborhood");
+    const indicators = list(neighborhood.indicators, "indicators").map((item) => {
+      const indicator = record(item, "indicator");
+      return {
+        label: text(indicator.label, "indicator.label"),
+        unit: text(indicator.unit, "indicator.unit"),
+        value:
+          indicator.value === null
+            ? `Unavailable: ${text(indicator.missing_reason, "indicator.missing_reason").replaceAll("_", " ")}`
+            : detailValue(indicator.value, "indicator.value"),
+      };
+    });
+    sections.push({
+      facts: [
+        fact(area, "name", "Neighbourhood"),
+        fact(area, "code", "CBS neighbourhood code"),
+        fact(neighborhood, "dataset_year", "Dataset year", "year"),
+        fact(neighborhood, "dataset_id", "CBS dataset ID"),
+        ...indicators,
+      ],
+      level: "neighborhood",
+      limitation:
+        "These statistics describe the neighbourhood, not the selected property.",
+      title: "CBS neighbourhood context",
+    });
+  }
+
+  const air = optionalRecord(overview.air_quality, "air_quality");
+  if (air) {
+    for (const item of list(air.observations, "observations")) {
+      const observation = record(item, "observation");
+      const station = record(observation.station, "station");
+      sections.push({
+        facts: [
+          fact(
+            observation,
+            "value",
+            text(observation.label, "observation.label"),
+            text(observation.unit, "observation.unit"),
+          ),
+          fact(observation, "pollutant", "Pollutant"),
+          fact(observation, "measured_from", "Measured from"),
+          fact(observation, "measured_until", "Measured until"),
+          fact(observation, "status", "Observation status"),
+          fact(station, "name", "Station"),
+          fact(station, "operator", "Operator"),
+          fact(station, "station_type", "Station type"),
+          fact(station, "distance_km", "Distance from address", "km"),
+          fact(station, "id", "Station ID"),
+        ],
+        level: "monitoring-station",
+        limitation: text(air.limitation, "air_quality.limitation"),
+        title: `${text(observation.pollutant, "pollutant")} station context`,
+      });
+    }
+  }
+  const unavailable = overview.unavailable_sections ?? [];
+  const unavailableMetadata: Record<
+    string,
+    { level: HomeDetailSection["level"]; title: string }
+  > = {
+    administrative_context: {
+      level: "neighborhood",
+      title: "Administrative context",
+    },
+    air_quality: {
+      level: "monitoring-station",
+      title: "Luchtmeetnet station context",
+    },
+    energy_registration: {
+      level: "property",
+      title: "EP-Online energy registration",
+    },
+    neighborhood_indicators: {
+      level: "neighborhood",
+      title: "CBS neighbourhood context",
+    },
+    property: { level: "property", title: "BAG property" },
+  };
+  for (const value of list(unavailable, "unavailable_sections")) {
+    const item = record(value, "unavailable section");
+    const name = text(item.section, "unavailable section name");
+    const metadata = unavailableMetadata[name];
+    if (!metadata) throw new TypeError("unavailable section name is unsupported");
+    sections.push({
+      facts: [
+        {
+          label: "Availability",
+          unit: null,
+          value: `Unavailable: ${text(item.reason, "unavailable reason").replaceAll("_", " ")}`,
+        },
+      ],
+      level: metadata.level,
+      limitation: "Missing official data is not evidence of poor property quality.",
+      title: metadata.title,
+    });
+  }
+  return sections;
 }
 
 function parseSource(value: unknown): SourceMetadata {
@@ -195,6 +410,29 @@ function parseHome(value: unknown): ComparedHome {
       contextNotes: list(home.contextNotes, "home.contextNotes").map((item) =>
         text(item, "context note"),
       ),
+      details: list(home.details ?? [], "home.details").map((item) => {
+        const section = record(item, "home detail section");
+        const level = text(section.level, "detail level") as HomeDetailSection["level"];
+        if (
+          !["property", "building", "neighborhood", "monitoring-station"].includes(
+            level,
+          )
+        )
+          throw new TypeError("detail level is unsupported");
+        return {
+          facts: list(section.facts, "detail facts").map((value) => {
+            const item = record(value, "detail fact");
+            return {
+              label: text(item.label, "detail fact label"),
+              unit: nullableText(item.unit ?? null, "detail fact unit"),
+              value: detailValue(item.value, "detail fact value"),
+            };
+          }),
+          level,
+          limitation: nullableText(section.limitation ?? null, "detail limitation"),
+          title: text(section.title, "detail title"),
+        };
+      }),
       displayName: nullableText(home.displayName, "home.displayName"),
       sources: list(home.sources, "home.sources").map(parseSource),
       unavailableReason,
@@ -206,6 +444,7 @@ function parseHome(value: unknown): ComparedHome {
     return {
       addressId,
       contextNotes: [],
+      details: [],
       displayName: null,
       sources: [],
       unavailableReason,
@@ -229,6 +468,7 @@ function parseHome(value: unknown): ComparedHome {
   return {
     addressId,
     contextNotes: collectContextNotes(overview),
+    details: collectDetails(overview),
     displayName: `${street} ${houseNumber}${houseLetter}${suffix}, ${postalCode} ${city}`,
     sources: collectSources(overview),
     unavailableReason,
