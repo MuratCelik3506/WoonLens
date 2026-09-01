@@ -319,6 +319,13 @@ Live responses retain independent response-schema, adapter-contract,
 transformation, rule, and download-schema versions. Provider payloads,
 normalized facts, comparison results, and generated reports are not persisted.
 
+The frontend validates and presents comparison insights and source audits but
+does not recreate interpretation rules from raw values. Stable rule identifiers,
+classifications, affected address references, compared fields, and rule version
+remain visible through progressive disclosure. Selection changes invalidate the
+entire result and its explanations together so rule output cannot be attached to
+stale evidence.
+
 JSON evidence reports are produced by an application service over the existing
 live comparison use case. A timezone-aware clock is injected for deterministic
 tests. The HTTP adapter owns JSON serialization, the attachment filename, and

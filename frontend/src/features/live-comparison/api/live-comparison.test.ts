@@ -19,6 +19,7 @@ describe("live comparison API", () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
         JSON.stringify({
+          audits: [],
           homes: [
             {
               addressId: first,
@@ -37,6 +38,7 @@ describe("live comparison API", () => {
           ],
           metrics: [],
           notices: [],
+          insights: [],
           rulesVersion: "1.1.0",
         }),
         { status: 200 },

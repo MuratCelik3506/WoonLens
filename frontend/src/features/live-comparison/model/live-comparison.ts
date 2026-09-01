@@ -31,8 +31,27 @@ export type ComparedMetric = Readonly<{
 
 export type ComparisonNotice = Readonly<{ code: string; message: string }>;
 
+export type ComparisonInsight = Readonly<{
+  addressIds: readonly string[];
+  classification: string;
+  message: string;
+  metricKey: string;
+  ruleId: string;
+}>;
+
+export type SourceAudit = Readonly<{
+  addressId: string;
+  classification: string;
+  fields: readonly [string, string];
+  message: string;
+  ruleId: string;
+  values: readonly [number | string | null, number | string | null];
+}>;
+
 export type LiveComparison = Readonly<{
+  audits: readonly SourceAudit[];
   homes: readonly ComparedHome[];
+  insights: readonly ComparisonInsight[];
   metrics: readonly ComparedMetric[];
   notices: readonly ComparisonNotice[];
   rulesVersion: string;
@@ -40,6 +59,21 @@ export type LiveComparison = Readonly<{
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const INSIGHT_CLASSIFICATIONS = new Set([
+  "context_only",
+  "descriptive_extreme",
+  "directional_indicator",
+  "insufficient_data",
+  "not_ranked",
+  "same",
+]);
+const AUDIT_CLASSIFICATIONS = new Set([
+  "definition-difference",
+  "match",
+  "missing",
+  "possible-conflict",
+]);
 
 export function isUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_PATTERN.test(value);
@@ -237,6 +271,74 @@ function parseMetric(value: unknown): ComparedMetric {
   };
 }
 
+function classification(
+  value: unknown,
+  allowed: ReadonlySet<string>,
+  label: string,
+): string {
+  const result = text(value, label);
+  if (!allowed.has(result)) throw new TypeError(`${label} is unsupported`);
+  return result;
+}
+
+function scalar(value: unknown, label: string): number | string | null {
+  if (value === null || typeof value === "string" || typeof value === "number") {
+    return value;
+  }
+  throw new TypeError(`${label} must be a scalar or null`);
+}
+
+function parseInsight(value: unknown): ComparisonInsight {
+  const insight = record(value, "insight");
+  const addressIds = list(
+    insight.address_ids ?? insight.addressIds,
+    "insight.address_ids",
+  ).map((addressId) => {
+    if (!isUuid(addressId)) throw new TypeError("insight address must be a UUID");
+    return addressId;
+  });
+  if (new Set(addressIds).size !== addressIds.length) {
+    throw new TypeError("insight addresses must be unique");
+  }
+  return {
+    addressIds,
+    classification: classification(
+      insight.classification,
+      INSIGHT_CLASSIFICATIONS,
+      "insight.classification",
+    ),
+    message: text(insight.message, "insight.message"),
+    metricKey: text(insight.metric_key ?? insight.metricKey, "insight.metric_key"),
+    ruleId: text(insight.rule_id ?? insight.ruleId, "insight.rule_id"),
+  };
+}
+
+function pair(value: unknown, label: string): readonly [unknown, unknown] {
+  const items = list(value, label);
+  if (items.length !== 2) throw new TypeError(`${label} must contain two items`);
+  return [items[0], items[1]];
+}
+
+function parseAudit(value: unknown): SourceAudit {
+  const audit = record(value, "audit");
+  const addressId = audit.address_id ?? audit.addressId;
+  if (!isUuid(addressId)) throw new TypeError("audit.address_id must be a UUID");
+  const fields = pair(audit.fields, "audit.fields");
+  const values = pair(audit.values, "audit.values");
+  return {
+    addressId,
+    classification: classification(
+      audit.classification,
+      AUDIT_CLASSIFICATIONS,
+      "audit.classification",
+    ),
+    fields: [text(fields[0], "audit field"), text(fields[1], "audit field")],
+    message: text(audit.message, "audit.message"),
+    ruleId: text(audit.rule_id ?? audit.ruleId, "audit.rule_id"),
+    values: [scalar(values[0], "audit value"), scalar(values[1], "audit value")],
+  };
+}
+
 export function parseLiveComparison(value: unknown): LiveComparison {
   const response = record(value, "comparison response");
   const homes = list(response.homes, "homes").map(parseHome);
@@ -261,9 +363,26 @@ export function parseLiveComparison(value: unknown): LiveComparison {
   ) {
     throw new TypeError("metric values must match comparison homes");
   }
+  const insights = list(response.insights, "insights").map(parseInsight);
+  const metricKeys = new Set(metrics.map((metric) => metric.key));
+  if (
+    insights.some(
+      (insight) =>
+        !metricKeys.has(insight.metricKey) ||
+        insight.addressIds.some((addressId) => !ids.includes(addressId)),
+    )
+  ) {
+    throw new TypeError("insight references must match comparison evidence");
+  }
+  const audits = list(response.audits, "audits").map(parseAudit);
+  if (audits.some((audit) => !ids.includes(audit.addressId))) {
+    throw new TypeError("audit address must match comparison homes");
+  }
 
   return {
+    audits,
     homes,
+    insights,
     metrics,
     notices: list(response.notices, "notices").map((value) => {
       const notice = record(value, "notice");
