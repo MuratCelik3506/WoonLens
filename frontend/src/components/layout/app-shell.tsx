@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 type AppShellProps = Readonly<{
+  comparisonExperience?: ReactNode;
   systemStatus?: ReactNode;
 }>;
 
@@ -12,7 +13,7 @@ const navigation = [
   ["About", "#about"],
 ] as const;
 
-export function AppShell({ systemStatus }: AppShellProps) {
+export function AppShell({ comparisonExperience, systemStatus }: AppShellProps) {
   return (
     <div className="min-h-screen bg-page text-ink">
       <a
@@ -57,71 +58,7 @@ export function AppShell({ systemStatus }: AppShellProps) {
       </header>
 
       <main id="main-content">
-        <section
-          className="mx-auto grid max-w-7xl gap-10 px-5 py-20 lg:grid-cols-[minmax(0,1fr)_20rem] lg:px-8 lg:py-28"
-          id="compare"
-        >
-          <div className="max-w-3xl">
-            <p className="mb-5 text-sm font-semibold uppercase tracking-[0.16em] text-accent">
-              Official data. Clear differences.
-            </p>
-            <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] sm:text-5xl lg:text-6xl">
-              Compare Dutch homes with trusted public data.
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-muted">
-              WoonLens brings property, energy, neighbourhood, and air-quality context
-              together without a hidden score or stored provider data.
-            </p>
-
-            <div className="mt-9 rounded-xl border border-border bg-surface p-4 sm:p-5">
-              <label className="block text-sm font-semibold" htmlFor="address">
-                Find an official address
-              </label>
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                <input
-                  className="min-h-12 min-w-0 flex-1 rounded-lg border border-border bg-page px-4 text-base placeholder:text-muted"
-                  disabled
-                  id="address"
-                  placeholder="Address search arrives in the next feature"
-                  type="search"
-                />
-                <button
-                  className="min-h-12 rounded-lg bg-accent px-5 font-semibold text-surface disabled:cursor-not-allowed disabled:opacity-60 dark:text-page"
-                  disabled
-                  type="button"
-                >
-                  Search
-                </button>
-              </div>
-              <p className="mt-3 text-sm text-muted">
-                The application foundation is ready. Address selection is the next
-                independently tested delivery.
-              </p>
-            </div>
-          </div>
-
-          <aside
-            aria-labelledby="selected-homes-title"
-            className="self-start rounded-xl border border-border bg-surface p-6"
-          >
-            <div className="flex items-baseline justify-between gap-4">
-              <h2 className="text-lg font-semibold" id="selected-homes-title">
-                Selected homes
-              </h2>
-              <span className="text-sm text-muted">0 of 5</span>
-            </div>
-            <p className="mt-5 text-sm leading-6 text-muted">
-              Add at least two official addresses to begin a live comparison.
-            </p>
-            <button
-              className="mt-7 min-h-12 w-full rounded-lg bg-accent px-5 font-semibold text-surface disabled:cursor-not-allowed disabled:opacity-60 dark:text-page"
-              disabled
-              type="button"
-            >
-              Compare homes
-            </button>
-          </aside>
-        </section>
+        {comparisonExperience ?? <ComparisonFoundation />}
 
         <section className="border-y border-border bg-surface" id="how-it-works">
           <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 md:grid-cols-3 lg:px-8">
@@ -160,6 +97,19 @@ export function AppShell({ systemStatus }: AppShellProps) {
         </div>
       </footer>
     </div>
+  );
+}
+
+function ComparisonFoundation() {
+  return (
+    <section className="mx-auto max-w-7xl px-5 py-20 lg:px-8 lg:py-28" id="compare">
+      <p className="mb-5 text-sm font-semibold uppercase tracking-[0.16em] text-accent">
+        Official data. Clear differences.
+      </p>
+      <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] sm:text-5xl lg:text-6xl">
+        Compare Dutch homes with trusted public data.
+      </h1>
+    </section>
   );
 }
 
