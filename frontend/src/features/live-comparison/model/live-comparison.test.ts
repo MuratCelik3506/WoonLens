@@ -36,9 +36,26 @@ function home(addressId: string, number: string) {
 describe("parseLiveComparison", () => {
   it("normalizes ordered homes, metrics, missing values, and provenance", () => {
     const result = parseLiveComparison({
-      audits: [],
+      audits: [
+        {
+          address_id: first,
+          classification: "definition-difference",
+          fields: ["bag.registered_area_m2", "ep_online.thermal_zone_area_m2"],
+          message: "The fields describe different scopes.",
+          rule_id: "area.definition.v1",
+          values: [80, null],
+        },
+      ],
       homes: [home(first, "120"), home(second, "40")],
-      insights: [],
+      insights: [
+        {
+          address_ids: [first],
+          classification: "descriptive_extreme",
+          message: "A factual difference with a limitation.",
+          metric_key: "registered_area_m2",
+          rule_id: "registered_area_m2.extreme",
+        },
+      ],
       metrics: [
         {
           metric: {
@@ -75,6 +92,8 @@ describe("parseLiveComparison", () => {
     expect(result.homes[0]?.displayName).toContain("Westblaak 120");
     expect(result.homes[0]?.sources[0]?.provider).toBe("PDOK");
     expect(result.metrics[0]?.values[1]?.missingReason).toBe("not_reported");
+    expect(result.insights[0]?.ruleId).toBe("registered_area_m2.extreme");
+    expect(result.audits[0]?.values).toEqual([80, null]);
   });
 
   it("rejects malformed metric cardinality", () => {
@@ -97,5 +116,59 @@ describe("parseLiveComparison", () => {
         rules_version: "1.1.0",
       }),
     ).toThrow("one value per home");
+  });
+
+  it("rejects malformed or unsupported explanation evidence", () => {
+    const base = {
+      audits: [],
+      homes: [home(first, "120"), home(second, "40")],
+      metrics: [
+        {
+          metric: {
+            definition: "Definition",
+            key: "registered_area_m2",
+            label: "Area",
+            scope: "property",
+            unit: "m²",
+          },
+          values: [
+            { address_id: first, is_baseline: true, missing_reason: null, value: 80 },
+            { address_id: second, is_baseline: false, missing_reason: null, value: 70 },
+          ],
+        },
+      ],
+      notices: [],
+      rules_version: "1.1.0",
+    };
+    expect(() =>
+      parseLiveComparison({
+        ...base,
+        insights: [
+          {
+            address_ids: [first],
+            classification: "winner",
+            message: "Unsupported conclusion",
+            metric_key: "registered_area_m2",
+            rule_id: "unsafe.rule",
+          },
+        ],
+      }),
+    ).toThrow("unsupported");
+    expect(() =>
+      parseLiveComparison({
+        ...base,
+        audits: [
+          {
+            address_id: first,
+            classification: "missing",
+            fields: ["only.one.field"],
+            message: "Missing evidence",
+            rule_id: "audit.rule",
+            values: [null, null],
+          },
+        ],
+        insights: [],
+      }),
+    ).toThrow("two items");
   });
 });

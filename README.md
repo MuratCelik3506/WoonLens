@@ -86,8 +86,10 @@ query defaults, and browser-test harness. Guests can search official addresses
 and build an in-memory selection of two to five homes, then request a live,
 source-attributed comparison across property, energy, neighbourhood, and nearby
 monitoring-station context. The active guest comparison can be regenerated as a
-source-attributed JSON or PDF evidence download. Official provider responses and
-generated files remain transient, and no comparison database is used.
+source-attributed JSON or PDF evidence download. Versioned backend rules also
+surface neutral factual differences and cross-source checks without producing a
+score or recommendation. Official provider responses and generated files remain
+transient, and no comparison database is used.
 
 ### Run locally
 

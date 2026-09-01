@@ -167,6 +167,7 @@ async def test_compares_in_input_order_concurrently_and_calculates_deltas() -> N
         "definition-difference",
         "match",
     }
+    assert len(result.audits) == 4
 
 
 @pytest.mark.anyio

@@ -36,6 +36,17 @@ test("searches and selects official addresses with the keyboard", async ({ page 
     const request = route.request().postDataJSON() as { address_ids: string[] };
     await route.fulfill({
       body: JSON.stringify({
+        audits: [
+          {
+            addressId: request.address_ids[0],
+            classification: "definition-difference",
+            fields: ["bag.registered_area_m2", "ep_online.thermal_zone_area_m2"],
+            message:
+              "The fields describe different scopes and are not a register error.",
+            ruleId: "area.definition.v1",
+            values: [80, 75],
+          },
+        ],
         homes: request.address_ids.map((addressId, index) => ({
           addressId,
           contextNotes: ["CBS neighbourhood reference year 2024"],
@@ -64,6 +75,16 @@ test("searches and selects official addresses with the keyboard", async ({ page 
               missingReason: index === 1 ? "not_reported" : null,
               value: index === 1 ? null : 80,
             })),
+          },
+        ],
+        insights: [
+          {
+            addressIds: [request.address_ids[0]],
+            classification: "descriptive_extreme",
+            message:
+              "This home has the largest reported BAG registered area; larger is a preference fact, not an overall quality verdict.",
+            metricKey: "registered_area_m2",
+            ruleId: "registered_area_m2.extreme",
           },
         ],
         notices: [{ code: "area", message: "Area definitions remain distinct." }],
@@ -108,6 +129,14 @@ test("searches and selects official addresses with the keyboard", async ({ page 
   ).toBeVisible();
   await expect(page.getByText("80 m²")).toBeVisible();
   await expect(page.getByText("Not reported")).toBeVisible();
+  const explanations = page.getByRole("region", { name: "Explainable differences" });
+  await expect(explanations).toContainText("not an overall quality verdict");
+  await explanations.getByText("Technical rule details").click();
+  await expect(explanations.getByText("registered_area_m2.extreme")).toBeVisible();
+  const audits = page.getByRole("region", { name: "Cross-source checks" });
+  await expect(audits).toContainText("not a register error");
+  await audits.getByText("Compared source fields").click();
+  await expect(audits.getByText("area.definition.v1")).toBeVisible();
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download JSON" }).click();
   const download = await downloadPromise;
@@ -118,6 +147,9 @@ test("searches and selects official addresses with the keyboard", async ({ page 
   await page.getByRole("button", { name: /Remove Westblaak 40/ }).click();
   await expect(
     page.getByRole("heading", { name: "Factual differences, source by source" }),
+  ).not.toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Explainable differences" }),
   ).not.toBeVisible();
   await expect(page.getByRole("button", { name: "Download JSON" })).not.toBeVisible();
 });

@@ -45,6 +45,24 @@ function comparison(
   second: AddressSuggestion,
 ): LiveComparison {
   return {
+    audits: [
+      {
+        addressId: first.id,
+        classification: "definition-difference",
+        fields: ["bag.registered_area_m2", "ep_online.thermal_zone_area_m2"],
+        message: "The fields describe different scopes and are not a register error.",
+        ruleId: "area.definition.v1",
+        values: [80, 75],
+      },
+      {
+        addressId: second.id,
+        classification: "missing",
+        fields: ["bag.construction_year", "ep_online.construction_year"],
+        message: "Both construction-year fields are required for this audit.",
+        ruleId: "construction_year.cross_source.v1",
+        values: [1990, null],
+      },
+    ],
     homes: [first, second].map((item) => ({
       addressId: item.id,
       contextNotes: [],
@@ -75,6 +93,16 @@ function comparison(
             value: null,
           },
         ],
+      },
+    ],
+    insights: [
+      {
+        addressIds: [first.id],
+        classification: "descriptive_extreme",
+        message:
+          "This home has the largest reported BAG registered area; larger is a preference fact, not an overall quality verdict.",
+        metricKey: "registered_area_m2",
+        ruleId: "registered_area_m2.extreme",
       },
     ],
     notices: [{ code: "area", message: "Area definitions remain distinct." }],
@@ -156,6 +184,17 @@ describe("ComparisonBuilder", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("80 m²")).toBeInTheDocument();
     expect(screen.getByText("Not reported")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Explainable differences" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/larger is a preference fact, not an overall quality verdict/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Cross-source checks" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Definition difference")).toBeInTheDocument();
+    expect(screen.getByText("Not available from the source")).toBeInTheDocument();
     expect(screen.queryByText(/winner|best home/i)).not.toBeInTheDocument();
 
     fireEvent.click(
@@ -163,6 +202,9 @@ describe("ComparisonBuilder", () => {
     );
     expect(
       screen.queryByRole("heading", { name: "Factual differences, source by source" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Explainable differences" }),
     ).not.toBeInTheDocument();
   });
 

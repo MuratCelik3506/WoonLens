@@ -35,6 +35,7 @@ describe("comparison proxy route", () => {
 
   it("returns a validated transient comparison", async () => {
     mockedRequest.mockResolvedValueOnce({
+      audits: [],
       homes: [first, second].map((addressId) => ({
         addressId,
         contextNotes: [],
@@ -44,6 +45,7 @@ describe("comparison proxy route", () => {
       })),
       metrics: [],
       notices: [],
+      insights: [],
       rulesVersion: "1.1.0",
     });
     const response = await POST(request([first, second]));

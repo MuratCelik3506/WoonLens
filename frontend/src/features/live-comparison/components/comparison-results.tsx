@@ -3,6 +3,7 @@ import type {
   LiveComparison,
 } from "@/features/live-comparison/model/live-comparison";
 import { DownloadActions } from "@/features/comparison-downloads/components/download-actions";
+import { ExplainableEvidence } from "@/features/live-comparison/components/explainable-evidence";
 
 const sections = [
   {
@@ -196,6 +197,8 @@ export function ComparisonResults({
             );
           })}
         </div>
+
+        <ExplainableEvidence comparison={comparison} labels={labels} />
 
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
           <article className="rounded-xl border border-border bg-surface p-6">
