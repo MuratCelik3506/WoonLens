@@ -1,10 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useId, useRef, useState } from "react";
 
 import { searchAddresses } from "@/features/address-search/api/address-suggestions";
 import type { AddressSuggestion } from "@/features/address-search/model/address-suggestion";
+import { compareHomes } from "@/features/live-comparison/api/live-comparison";
+import { ComparisonResults } from "@/features/live-comparison/components/comparison-results";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 
 const MINIMUM_HOMES = 2;
@@ -18,6 +20,13 @@ type SelectedHome = Readonly<{
 export function ComparisonBuilder() {
   const [selectedHomes, setSelectedHomes] = useState<readonly SelectedHome[]>([]);
   const [notice, setNotice] = useState("");
+  const comparison = useMutation({
+    mutationFn: (addressIds: readonly string[]) => compareHomes(addressIds),
+  });
+
+  function selectionChanged() {
+    comparison.reset();
+  }
 
   function addHome(suggestion: AddressSuggestion): boolean {
     if (selectedHomes.some((home) => home.suggestion.id === suggestion.id)) {
@@ -34,44 +43,67 @@ export function ComparisonBuilder() {
     if (number === undefined) return false;
 
     setSelectedHomes((homes) => [...homes, { number, suggestion }]);
+    selectionChanged();
     setNotice(`${suggestion.displayName} added to the comparison.`);
     return true;
   }
 
   function removeHome(id: string) {
     setSelectedHomes((homes) => homes.filter((home) => home.suggestion.id !== id));
+    selectionChanged();
     setNotice("Home removed from the comparison.");
   }
 
+  const labels = new Map(
+    selectedHomes.map((home) => [home.suggestion.id, home.suggestion.displayName]),
+  );
+  const selectedIds = selectedHomes.map((home) => home.suggestion.id);
+  const resultMatchesSelection =
+    comparison.data?.homes.length === selectedIds.length &&
+    comparison.data.homes.every((home, index) => home.addressId === selectedIds[index]);
+
   return (
-    <section
-      className="mx-auto grid max-w-7xl gap-10 px-5 py-20 lg:grid-cols-[minmax(0,1fr)_20rem] lg:px-8 lg:py-28"
-      id="compare"
-    >
-      <div className="max-w-3xl">
-        <p className="mb-5 text-sm font-semibold uppercase tracking-[0.16em] text-accent">
-          Official data. Clear differences.
-        </p>
-        <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] sm:text-5xl lg:text-6xl">
-          Compare Dutch homes with trusted public data.
-        </h1>
-        <p className="mt-6 max-w-2xl text-lg leading-8 text-muted">
-          Search official addresses and build a comparison of two to five homes. No
-          account is required and provider facts are not stored.
-        </p>
+    <>
+      <section
+        className="mx-auto grid max-w-7xl gap-10 px-5 py-20 lg:grid-cols-[minmax(0,1fr)_20rem] lg:px-8 lg:py-28"
+        id="compare"
+      >
+        <div className="max-w-3xl">
+          <p className="mb-5 text-sm font-semibold uppercase tracking-[0.16em] text-accent">
+            Official data. Clear differences.
+          </p>
+          <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] sm:text-5xl lg:text-6xl">
+            Compare Dutch homes with trusted public data.
+          </h1>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-muted">
+            Search official addresses and build a comparison of two to five homes. No
+            account is required and provider facts are not stored.
+          </p>
 
-        <AddressSearch
-          disabled={selectedHomes.length >= MAXIMUM_HOMES}
-          onSelect={addHome}
-          selectedIds={new Set(selectedHomes.map((home) => home.suggestion.id))}
+          <AddressSearch
+            disabled={selectedHomes.length >= MAXIMUM_HOMES}
+            onSelect={addHome}
+            selectedIds={new Set(selectedHomes.map((home) => home.suggestion.id))}
+          />
+          <p aria-live="polite" className="mt-4 min-h-6 text-sm text-muted">
+            {notice}
+          </p>
+        </div>
+
+        <ComparisonTray
+          error={comparison.isError}
+          homes={selectedHomes}
+          loading={comparison.isPending}
+          onCompare={() =>
+            comparison.mutate(selectedHomes.map((home) => home.suggestion.id))
+          }
+          onRemove={removeHome}
         />
-        <p aria-live="polite" className="mt-4 min-h-6 text-sm text-muted">
-          {notice}
-        </p>
-      </div>
-
-      <ComparisonTray homes={selectedHomes} onRemove={removeHome} />
-    </section>
+      </section>
+      {comparison.data && resultMatchesSelection ? (
+        <ComparisonResults comparison={comparison.data} labels={labels} />
+      ) : null}
+    </>
   );
 }
 
@@ -233,14 +265,19 @@ function AddressSearch({ disabled, onSelect, selectedIds }: AddressSearchProps) 
 }
 
 function ComparisonTray({
+  error,
   homes,
+  loading,
+  onCompare,
   onRemove,
 }: Readonly<{
+  error: boolean;
   homes: readonly SelectedHome[];
+  loading: boolean;
+  onCompare: () => void;
   onRemove: (id: string) => void;
 }>) {
   const ready = homes.length >= MINIMUM_HOMES && homes.length <= MAXIMUM_HOMES;
-  const [message, setMessage] = useState("");
 
   return (
     <aside className="sticky bottom-4 self-start rounded-xl border border-border bg-surface shadow-lg lg:top-6 lg:shadow-none">
@@ -279,16 +316,28 @@ function ComparisonTray({
 
           <button
             className="mt-6 min-h-12 w-full rounded-lg bg-accent px-5 font-semibold text-surface disabled:cursor-not-allowed disabled:opacity-60 dark:text-page"
-            disabled={!ready}
-            onClick={() =>
-              setMessage("Live comparison results arrive in the next feature.")
-            }
+            disabled={!ready || loading}
+            onClick={onCompare}
             type="button"
           >
-            Compare homes
+            {loading
+              ? "Comparing live data…"
+              : error
+                ? "Try comparison again"
+                : "Compare homes"}
           </button>
-          <p aria-live="polite" className="mt-3 min-h-5 text-xs text-muted">
-            {message || (ready ? "Your selection is ready." : "Select 2–5 homes.")}
+          <p
+            aria-live="polite"
+            className="mt-3 min-h-5 text-xs text-muted"
+            role="status"
+          >
+            {loading
+              ? "Requesting current facts from official sources."
+              : error
+                ? "The live comparison is unavailable. Your selection is preserved; try again."
+                : ready
+                  ? "Your selection is ready."
+                  : "Select 2–5 homes."}
           </p>
         </div>
       </details>

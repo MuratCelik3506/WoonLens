@@ -5,12 +5,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { searchAddresses } from "@/features/address-search/api/address-suggestions";
 import type { AddressSuggestion } from "@/features/address-search/model/address-suggestion";
 import { ComparisonBuilder } from "@/features/comparison-selection/components/comparison-builder";
+import { compareHomes } from "@/features/live-comparison/api/live-comparison";
+import type { LiveComparison } from "@/features/live-comparison/model/live-comparison";
 
 vi.mock("@/features/address-search/api/address-suggestions", () => ({
   searchAddresses: vi.fn(),
 }));
+vi.mock("@/features/live-comparison/api/live-comparison", () => ({
+  compareHomes: vi.fn(),
+}));
 
 const mockedSearch = vi.mocked(searchAddresses);
+const mockedComparison = vi.mocked(compareHomes);
 
 function suggestion(number: number): AddressSuggestion {
   return {
@@ -29,6 +35,48 @@ function renderBuilder() {
   );
 }
 
+function comparison(
+  first: AddressSuggestion,
+  second: AddressSuggestion,
+): LiveComparison {
+  return {
+    homes: [first, second].map((item) => ({
+      addressId: item.id,
+      contextNotes: [],
+      displayName: item.displayName,
+      sources: [
+        {
+          dataset: "BAG",
+          license: "CC0",
+          provider: "PDOK",
+          retrievedAt: "2026-09-01T12:00:00Z",
+        },
+      ],
+      unavailableReason: null,
+    })),
+    metrics: [
+      {
+        definition: "Official BAG registered area.",
+        key: "registered_area_m2",
+        label: "Registered BAG area",
+        scope: "property",
+        unit: "m²",
+        values: [
+          { addressId: first.id, isBaseline: true, missingReason: null, value: 80 },
+          {
+            addressId: second.id,
+            isBaseline: false,
+            missingReason: "not_reported",
+            value: null,
+          },
+        ],
+      },
+    ],
+    notices: [{ code: "area", message: "Area definitions remain distinct." }],
+    rulesVersion: "1.1.0",
+  };
+}
+
 async function searchFor(query: string, item: AddressSuggestion) {
   mockedSearch.mockResolvedValueOnce({ items: [item] });
   const combobox = screen.getByRole("combobox");
@@ -40,6 +88,8 @@ async function searchFor(query: string, item: AddressSuggestion) {
 describe("ComparisonBuilder", () => {
   beforeEach(() => {
     mockedSearch.mockReset();
+    mockedSearch.mockResolvedValue({ items: [] });
+    mockedComparison.mockReset();
   });
 
   it("selects an official suggestion with the keyboard", async () => {
@@ -81,5 +131,46 @@ describe("ComparisonBuilder", () => {
       screen.getByText(`${first.displayName} is already selected.`),
     ).toBeInTheDocument();
     expect(screen.getByText("4 of 5")).toBeInTheDocument();
+  });
+
+  it("renders a neutral live result and removes it when the selection changes", async () => {
+    renderBuilder();
+    const first = suggestion(1);
+    const second = suggestion(2);
+    fireEvent.click(await searchFor("Examplelaan 1", first));
+    fireEvent.click(await searchFor("Examplelaan 2", second));
+    mockedComparison.mockResolvedValueOnce(comparison(first, second));
+
+    fireEvent.click(screen.getByRole("button", { name: "Compare homes" }));
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Factual differences, source by source",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("80 m²")).toBeInTheDocument();
+    expect(screen.getByText("Not reported")).toBeInTheDocument();
+    expect(screen.queryByText(/winner|best home/i)).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: `Remove ${first.displayName}` }),
+    );
+    expect(
+      screen.queryByRole("heading", { name: "Factual differences, source by source" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("preserves the selection and allows retry after a comparison error", async () => {
+    renderBuilder();
+    const first = suggestion(1);
+    const second = suggestion(2);
+    fireEvent.click(await searchFor("Examplelaan 1", first));
+    fireEvent.click(await searchFor("Examplelaan 2", second));
+    mockedComparison.mockRejectedValueOnce(new Error("provider unavailable"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Compare homes" }));
+    expect(await screen.findByText(/selection is preserved/i)).toBeInTheDocument();
+    expect(screen.getByText("2 of 5")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try comparison again" })).toBeEnabled();
   });
 });
