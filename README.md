@@ -135,8 +135,11 @@ retrieve the latest non-expired EP-Online registration. It requires a personal
 server-side EP-Online API key and keeps the credential and provider response
 out of logs and storage.
 The overview endpoint resolves the address once, starts independent BAG,
-EP-Online, and administrative-context requests concurrently, and then retrieves
-neighbourhood indicators from the trusted context. Expected optional-source
+EP-Online, administrative-context, and Luchtmeetnet/RIVM requests concurrently,
+and then retrieves neighbourhood indicators from the trusted context. Air
+quality selects the nearest active compatible monitoring station independently
+for NO2, PM10, and PM2.5 and labels every reading as station-level context.
+Expected optional-source
 failures produce explicit `unavailable_sections`; they do not erase successful
 sections.
 The live comparison endpoint accepts two to five unique address UUIDs and

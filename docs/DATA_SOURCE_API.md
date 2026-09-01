@@ -729,13 +729,22 @@ Verified first observation at test time:
 | `value` | `measured_value` | Nullable numeric value |
 | measurement timestamps | start/end/representative time | Parse as timezone-aware UTC timestamps |
 
-The API measurement response does not include a unit. WoonLens must verify and
-return units from official component metadata before showing them.
+The API measurement response does not include a unit. WoonLens retrieves the
+official RIVM component metadata and requires the unit published for each
+selected pollutant before showing a value.
 
 Station observations are not address-level measurements. The report must show
 the station name, station type, distance from the address, and observation time.
-The selected station above proves the endpoint; a nearest-compatible-station
-catalogue must be implemented before production use.
+For every request, WoonLens retrieves the current RIVM measurement-location,
+measurement-series, and component metadata. Ended locations and series are
+excluded. For each of `NO2`, `PM10`, and `PM2.5`, it calculates CRS84 great-circle
+distance and selects the nearest active station with a compatible air series.
+Different pollutants may therefore select different stations. The RIVM
+`PM2.5` catalogue code maps explicitly to the live API formula `PM25`.
+
+Only page 1 of the selected station's measurements is requested, ordered by
+measurement time. The newest non-null row for the required formula is retained.
+No catalogue, response, selected station, or observation is persisted.
 
 Long historical ingestion is outside the stateless product scope. WoonLens uses
 only the live measurements required for the current comparison.
@@ -785,15 +794,26 @@ The source adapters should eventually produce a response shaped like this:
     "homes_with_solar_pct": 1
   },
   "air_quality": {
-    "status": "station-selection-not-yet-implemented"
+    "observations": [
+      {
+        "pollutant": "NO2",
+        "value": 14.35,
+        "unit": "µg/m³",
+        "scope": "monitoring-station",
+        "status": "current-unratified",
+        "station": {"id": "NL10418", "distance_km": 0.471}
+      }
+    ],
+    "missing_pollutants": []
   },
   "sources": []
 }
 ```
 
-The energy-label object is now backed by a verified authenticated response.
-`air_quality` remains deliberately incomplete because a production-safe station
-selection has not yet been implemented.
+The energy-label object is backed by a verified authenticated response. The
+air-quality example is station context and must not be presented as an
+address-level measurement, exposure estimate, limit-value assessment, or
+health conclusion.
 
 ## Live Home Overview Contract
 
@@ -812,6 +832,7 @@ independently attributed:
 | `energy_registration` | Residential unit | Same BAG object ID |
 | `administrative_context` | Address coordinate | CRS84 coordinate from resolved address |
 | `neighborhood_indicators` | Neighbourhood | CBS neighbourhood code from administrative context |
+| `air_quality` | Monitoring station | CRS84 address coordinate plus active RIVM series metadata |
 
 Independent downstream calls start concurrently. Expected typed source,
 configuration, not-found, and unsupported-object failures set the relevant
@@ -855,11 +876,14 @@ The response includes an `area_definition_difference` notice because BAG
 registered area and EP-Online thermal-zone area are separate metrics with
 different meanings. It also includes a `neighborhood_context` notice so CBS
 aggregates are not presented as facts about an individual property.
+The `monitoring_station_context` notice states that recent air-quality readings
+come from nearby stations and are not address measurements or health
+conclusions. NO2, PM10, and PM2.5 comparison metrics do not calculate deltas.
 
 The request, live provider fragments, normalized overviews, comparison table,
 and deltas are discarded after the response.
 
-### Interpretation rule set 1.0.0
+### Interpretation rule set 1.1.0
 
 The comparison response includes:
 
@@ -872,6 +896,9 @@ The comparison response includes:
 Insight classifications are `same`, `insufficient_data`,
 `descriptive_extreme`, `directional_indicator`, `context_only`, and
 `not_ranked`. Address UUID arrays identify every tied home selected by a rule.
+Rule set `1.1.0` adds `not_ranked` station-context interpretations for available
+air-quality metrics and `insufficient_data` when no selected home has a recent
+compatible observation. It never chooses a lower-reading home as a winner.
 
 The initial cross-source audits are:
 

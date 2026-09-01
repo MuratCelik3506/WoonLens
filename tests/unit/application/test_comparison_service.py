@@ -9,6 +9,11 @@ from woonlens.application.errors import AddressNotFoundError, SourceUnavailableE
 from woonlens.application.services.comparison import LiveHomeComparisonService
 from woonlens.domain.addresses import Coordinates, ResolvedAddress, SourceMetadata
 from woonlens.domain.administrative import AdministrativeArea, AdministrativeContext
+from woonlens.domain.air_quality import (
+    AirQualityContext,
+    AirQualityObservation,
+    MonitoringStation,
+)
 from woonlens.domain.energy import EnergyRegistration, EnergyRegistrationDetails
 from woonlens.domain.indicators import NeighborhoodIndicator, NeighborhoodIndicators
 from woonlens.domain.overview import HomeOverview, UnavailableSection
@@ -100,6 +105,34 @@ class OverviewStub:
         return result
 
 
+def with_no2(item: HomeOverview, value: float, distance: float) -> HomeOverview:
+    station = MonitoringStation(
+        "NL00001",
+        "Station",
+        "LML",
+        "background",
+        Coordinates(4.0, 52.0),
+        distance,
+    )
+    context = AirQualityContext(
+        (
+            AirQualityObservation(
+                "NO2",
+                "stikstofdioxide",
+                value,
+                "µg/m³",
+                datetime(2026, 9, 1, 7, tzinfo=UTC),
+                datetime(2026, 9, 1, 8, tzinfo=UTC),
+                station,
+            ),
+        ),
+        ("PM10", "PM2.5"),
+        SOURCE,
+        "Station context",
+    )
+    return replace(item, air_quality=context)
+
+
 @pytest.mark.anyio
 async def test_compares_in_input_order_concurrently_and_calculates_deltas() -> None:
     overviews = OverviewStub(
@@ -126,7 +159,7 @@ async def test_compares_in_input_order_concurrently_and_calculates_deltas() -> N
         item for item in result.metrics if item.metric.key == "average_woz_value"
     )
     assert woz.values[1].delta_from_baseline == 50000
-    assert result.rules_version == "1.0.0"
+    assert result.rules_version == "1.1.0"
     insights = {item.metric_key: item for item in result.insights}
     assert insights["registered_area_m2"].address_ids == (SECOND,)
     assert insights["energy_class"].classification == "not_ranked"
@@ -196,6 +229,28 @@ async def test_flags_different_cross_source_construction_years() -> None:
         and item.rule_id == "construction_year.cross_source.v1"
     )
     assert audit.classification == "possible-conflict"
+
+
+@pytest.mark.anyio
+async def test_keeps_air_quality_station_level_and_unranked() -> None:
+    result = await LiveHomeComparisonService(
+        OverviewStub(
+            {
+                FIRST: with_no2(overview(FIRST, 60, "B", 300000), 12.0, 1.0),
+                SECOND: with_no2(overview(SECOND, 75, "A", 350000), 20.0, 3.0),
+            }
+        )
+    ).compare((FIRST, SECOND))
+    metric = next(
+        item for item in result.metrics if item.metric.key == "air_quality_no2"
+    )
+    assert metric.metric.scope == "monitoring-station"
+    assert metric.metric.supports_delta is False
+    assert [value.delta_from_baseline for value in metric.values] == [None, None]
+    insight = next(
+        item for item in result.insights if item.metric_key == "air_quality_no2"
+    )
+    assert insight.classification == "not_ranked"
 
 
 @pytest.mark.anyio

@@ -42,3 +42,12 @@ def test_energy_class_is_not_ranked() -> None:
     insight = interpret_metrics((comparison("energy_class", "A", "B"),))[0]
     assert insight.classification == "not_ranked"
     assert "numeric score" in insight.message
+
+
+def test_air_quality_is_station_context_and_not_ranked() -> None:
+    available = interpret_metrics((comparison("air_quality_no2", 12.0, 15.0),))[0]
+    missing = interpret_metrics((comparison("air_quality_pm10", None, None),))[0]
+    assert available.classification == "not_ranked"
+    assert available.address_ids == (FIRST, SECOND)
+    assert "station" in available.message
+    assert missing.classification == "insufficient_data"

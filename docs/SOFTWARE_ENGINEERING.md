@@ -326,6 +326,14 @@ the `Cache-Control: no-store` response header; the domain and application layers
 remain unaware of FastAPI. Report schema versions and comparison rule versions
 are separate because either contract can evolve independently.
 
+Luchtmeetnet integration downloads the three bounded official metadata
+catalogues concurrently, filters ended locations and series, and selects at
+most one station per supported pollutant. Measurement requests are deduplicated
+by station identifier. This keeps the request below the documented public API
+fair-use limit without application persistence or cross-request caching.
+Great-circle selection is deterministic; station distance, type, measurement
+window, and `current-unratified` status remain part of the evidence contract.
+
 The PDF renderer is an outbound adapter behind the application-level
 `PdfReportRenderer` protocol. ReportLab remains outside the domain and
 application layers. The API selects the renderer and owns HTTP media type,

@@ -10,6 +10,7 @@ from woonlens.application.errors import (
 )
 from woonlens.application.ports.addresses import AddressDetailsPort
 from woonlens.application.ports.administrative import AdministrativeContextPort
+from woonlens.application.ports.air_quality import AirQualityContextPort
 from woonlens.application.ports.energy import EnergyRegistrationPort
 from woonlens.application.ports.indicators import NeighborhoodIndicatorsPort
 from woonlens.application.ports.property import PropertyDetailsPort
@@ -36,12 +37,14 @@ class HomeOverviewService:
         energy: EnergyRegistrationPort,
         context: AdministrativeContextPort,
         indicators: NeighborhoodIndicatorsPort,
+        air_quality: AirQualityContextPort | None = None,
     ) -> None:
         self._addresses = addresses
         self._properties = properties
         self._energy = energy
         self._context = context
         self._indicators = indicators
+        self._air_quality = air_quality
 
     async def resolve(self, address_id: UUID) -> HomeOverview:
         address = await self._addresses.resolve(address_id)
@@ -57,17 +60,29 @@ class HomeOverviewService:
             property_operation = self._unsupported("property")
             energy_operation = self._unsupported("energy_registration")
 
-        property_result, energy_result, context_result = await asyncio.gather(
+        air_operation = (
+            _capture("air_quality", self._air_quality.resolve(address.coordinates))
+            if self._air_quality is not None
+            else self._not_configured()
+        )
+        (
+            property_result,
+            energy_result,
+            context_result,
+            air_result,
+        ) = await asyncio.gather(
             property_operation,
             energy_operation,
             _capture(
                 "administrative_context",
                 self._context.resolve(address.coordinates),
             ),
+            air_operation,
         )
         property_details, property_failure = property_result
         energy_details, energy_failure = energy_result
         context, context_failure = context_result
+        air_quality, air_failure = air_result
 
         if (
             property_details is not None
@@ -109,6 +124,7 @@ class HomeOverviewService:
                 energy_failure,
                 context_failure,
                 indicators_failure,
+                air_failure,
             )
             if failure is not None
         )
@@ -119,6 +135,7 @@ class HomeOverviewService:
             context,
             indicators,
             failures,
+            air_quality,
         )
 
     @staticmethod
@@ -126,3 +143,7 @@ class HomeOverviewService:
         section: str,
     ) -> tuple[None, UnavailableSection]:
         return None, UnavailableSection(section, UnsupportedAddressableObjectError.code)
+
+    @staticmethod
+    async def _not_configured() -> tuple[None, None]:
+        return None, None

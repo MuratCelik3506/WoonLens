@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from woonlens.domain.addresses import ResolvedAddress
 from woonlens.domain.administrative import AdministrativeContext
+from woonlens.domain.air_quality import AirQualityContext
 from woonlens.domain.energy import EnergyRegistrationDetails
 from woonlens.domain.indicators import NeighborhoodIndicators
 from woonlens.domain.property import PropertyDetails
@@ -11,6 +12,7 @@ SECTIONS = {
     "energy_registration",
     "administrative_context",
     "neighborhood_indicators",
+    "air_quality",
 }
 
 
@@ -36,6 +38,7 @@ class HomeOverview:
     administrative_context: AdministrativeContext | None
     neighborhood_indicators: NeighborhoodIndicators | None
     unavailable_sections: tuple[UnavailableSection, ...]
+    air_quality: AirQualityContext | None = None
 
     def __post_init__(self) -> None:
         names = [item.section for item in self.unavailable_sections]
@@ -46,6 +49,7 @@ class HomeOverview:
             "energy_registration": self.energy_registration,
             "administrative_context": self.administrative_context,
             "neighborhood_indicators": self.neighborhood_indicators,
+            "air_quality": self.air_quality,
         }
         if any(values[name] is not None for name in names):
             raise ValueError("an unavailable section cannot also contain data")

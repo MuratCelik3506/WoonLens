@@ -82,6 +82,24 @@ def _average_woz(overview: HomeOverview) -> tuple[MetricScalar | None, str | Non
     return indicator.value, None
 
 
+def _air_quality_value(
+    overview: HomeOverview, pollutant: str
+) -> tuple[MetricScalar | None, str | None]:
+    if overview.air_quality is None:
+        return None, _section_reason(overview, "air_quality")
+    observation = next(
+        (
+            item
+            for item in overview.air_quality.observations
+            if item.pollutant == pollutant
+        ),
+        None,
+    )
+    if observation is None:
+        return None, "no_recent_compatible_station_reading"
+    return observation.value, None
+
+
 METRICS: tuple[tuple[MetricDefinition, Extractor], ...] = (
     (
         MetricDefinition(
@@ -171,6 +189,23 @@ METRICS: tuple[tuple[MetricDefinition, Extractor], ...] = (
         ),
         _average_woz,
     ),
+    *(
+        (
+            MetricDefinition(
+                f"air_quality_{pollutant.lower().replace('.', '_')}",
+                f"Latest nearby-station {pollutant}",
+                "monitoring-station",
+                "µg/m³",
+                "Recent unratified observation at the nearest active compatible "
+                "station; not measured at the selected address.",
+                False,
+            ),
+            lambda overview, pollutant=pollutant: _air_quality_value(
+                overview, pollutant
+            ),
+        )
+        for pollutant in ("NO2", "PM10", "PM2.5")
+    ),
 )
 
 
@@ -203,6 +238,12 @@ class LiveHomeComparisonService:
                     "neighborhood_context",
                     "Neighbourhood values describe local context, not the "
                     "selected home.",
+                ),
+                ComparisonNotice(
+                    "monitoring_station_context",
+                    "Air-quality values are recent unratified observations at "
+                    "nearby monitoring stations, not measurements at the selected "
+                    "addresses or health conclusions.",
                 ),
             ),
             RULES_VERSION,
