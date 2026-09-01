@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { searchAddresses } from "@/features/address-search/api/address-suggestions";
 import type { AddressSuggestion } from "@/features/address-search/model/address-suggestion";
 import { ComparisonBuilder } from "@/features/comparison-selection/components/comparison-builder";
+import { downloadComparison } from "@/features/comparison-downloads/api/comparison-download";
 import { compareHomes } from "@/features/live-comparison/api/live-comparison";
 import type { LiveComparison } from "@/features/live-comparison/model/live-comparison";
 
@@ -14,9 +15,13 @@ vi.mock("@/features/address-search/api/address-suggestions", () => ({
 vi.mock("@/features/live-comparison/api/live-comparison", () => ({
   compareHomes: vi.fn(),
 }));
+vi.mock("@/features/comparison-downloads/api/comparison-download", () => ({
+  downloadComparison: vi.fn(),
+}));
 
 const mockedSearch = vi.mocked(searchAddresses);
 const mockedComparison = vi.mocked(compareHomes);
+const mockedDownload = vi.mocked(downloadComparison);
 
 function suggestion(number: number): AddressSuggestion {
   return {
@@ -90,6 +95,7 @@ describe("ComparisonBuilder", () => {
     mockedSearch.mockReset();
     mockedSearch.mockResolvedValue({ items: [] });
     mockedComparison.mockReset();
+    mockedDownload.mockReset();
   });
 
   it("selects an official suggestion with the keyboard", async () => {
@@ -172,5 +178,41 @@ describe("ComparisonBuilder", () => {
     expect(await screen.findByText(/selection is preserved/i)).toBeInTheDocument();
     expect(screen.getByText("2 of 5")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try comparison again" })).toBeEnabled();
+  });
+
+  it("downloads a transient report and revokes its object URL", async () => {
+    renderBuilder();
+    const first = suggestion(1);
+    const second = suggestion(2);
+    fireEvent.click(await searchFor("Examplelaan 1", first));
+    fireEvent.click(await searchFor("Examplelaan 2", second));
+    mockedComparison.mockResolvedValueOnce(comparison(first, second));
+    fireEvent.click(screen.getByRole("button", { name: "Compare homes" }));
+    await screen.findByRole("heading", {
+      name: "Factual differences, source by source",
+    });
+
+    const createObjectUrl = vi.fn(() => "blob:report");
+    const revokeObjectUrl = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: createObjectUrl,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeObjectUrl,
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    mockedDownload.mockResolvedValueOnce({
+      blob: new Blob(["{}"], { type: "application/json" }),
+      filename: "woonlens-comparison-20260901T120000Z.json",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Download JSON" }));
+
+    expect(await screen.findByText("JSON download started.")).toBeInTheDocument();
+    expect(mockedDownload).toHaveBeenCalledWith("json", [first.id, second.id]);
+    expect(createObjectUrl).toHaveBeenCalledOnce();
+    await waitFor(() => expect(revokeObjectUrl).toHaveBeenCalledWith("blob:report"));
   });
 });
