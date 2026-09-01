@@ -2,6 +2,7 @@ import type {
   ComparedMetric,
   LiveComparison,
 } from "@/features/live-comparison/model/live-comparison";
+import { DownloadActions } from "@/features/comparison-downloads/components/download-actions";
 
 const sections = [
   {
@@ -108,6 +109,8 @@ export function ComparisonResults({
             </ul>
           </div>
         ) : null}
+
+        <DownloadActions addressIds={comparison.homes.map((home) => home.addressId)} />
 
         <div className="mt-10 space-y-8">
           {sections.map((section) => {

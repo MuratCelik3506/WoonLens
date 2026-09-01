@@ -73,6 +73,17 @@ test("searches and selects official addresses with the keyboard", async ({ page 
       status: 200,
     });
   });
+  await page.route("**/api/comparison-downloads/json", async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({ schema_version: "1.0.0" }),
+      contentType: "application/json",
+      headers: {
+        "Content-Disposition":
+          'attachment; filename="woonlens-comparison-20260901T120000Z.json"',
+      },
+      status: 200,
+    });
+  });
 
   await page.goto("/");
   const search = page.getByRole("combobox", { name: "Find an official address" });
@@ -97,9 +108,16 @@ test("searches and selects official addresses with the keyboard", async ({ page 
   ).toBeVisible();
   await expect(page.getByText("80 m²")).toBeVisible();
   await expect(page.getByText("Not reported")).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download JSON" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe(
+    "woonlens-comparison-20260901T120000Z.json",
+  );
 
   await page.getByRole("button", { name: /Remove Westblaak 40/ }).click();
   await expect(
     page.getByRole("heading", { name: "Factual differences, source by source" }),
   ).not.toBeVisible();
+  await expect(page.getByRole("button", { name: "Download JSON" })).not.toBeVisible();
 });

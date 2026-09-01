@@ -85,8 +85,9 @@ foundation provides the responsive application shell, design tokens, transient
 query defaults, and browser-test harness. Guests can search official addresses
 and build an in-memory selection of two to five homes, then request a live,
 source-attributed comparison across property, energy, neighbourhood, and nearby
-monitoring-station context. Official provider responses remain transient and no
-comparison database is used.
+monitoring-station context. The active guest comparison can be regenerated as a
+source-attributed JSON or PDF evidence download. Official provider responses and
+generated files remain transient, and no comparison database is used.
 
 ### Run locally
 
