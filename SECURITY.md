@@ -48,6 +48,23 @@ camera, microphone, and geolocation access are disabled. The map uses official
 address coordinates already present in the transient comparison and does not
 request browser geolocation.
 
+## Optional account boundary
+
+Optional accounts use the provider-neutral OIDC and Backend-for-Frontend
+contract in
+[`ADR 0010`](docs/adr/0010-oidc-bff-and-minimal-account-data.md). WoonLens does
+not store passwords or recovery secrets, and browser JavaScript must never
+receive provider tokens. Production sessions use an opaque, rotating
+`Secure`, `HttpOnly`, `SameSite=Lax` host-only cookie plus explicit CSRF
+protection.
+
+FastAPI independently validates the configured issuer and audience and applies
+owner-scoped authorization to every saved object operation. Account tables may
+contain only the identity mapping and explicitly saved organisation recipes.
+They exclude provider facts, address labels, comparison results, reports, and
+automatic search history. Account export, session revocation, deletion, and the
+maximum 35-day encrypted-backup expiry are part of the security boundary.
+
 ## Supported versions
 
 There are no supported releases yet. This section will be updated when the

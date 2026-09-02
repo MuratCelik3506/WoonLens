@@ -44,9 +44,9 @@ property facts. It must not contain BAG area, construction year, energy data,
 CBS values, environmental observations, normalized comparison output, or raw
 provider fields beyond the minimum reference required to rerun the search.
 
-The exact minimum address-reference schema, retention period, deletion flow,
-and consent language require a separate account-data decision before account
-implementation.
+The minimum address-reference schema, identity boundary, retention, deletion,
+and consent constraints are defined by
+[`ADR 0010`](0010-oidc-bff-and-minimal-account-data.md).
 
 ## Transient Data Contract
 
@@ -111,5 +111,5 @@ accessible without identity or saved history.
 ## Revisit Conditions
 
 Provider-data persistence or caching may be reconsidered only through a new ADR
-and a corresponding product-scope change. Optional account storage must be
-defined before account implementation and cannot weaken the provider-data rule.
+and a corresponding product-scope change. Optional account storage is defined
+by ADR 0010 and cannot weaken the provider-data rule.

@@ -200,6 +200,11 @@ provider requests.
 The account store must not contain provider response fields, normalized
 property facts, environmental observations, generated reports, or API caches.
 
+The minimum reference schema, provider-neutral identity boundary, session
+handling, ownership checks, export, deletion, and backup expiry are fixed by
+[`ADR 0010`](adr/0010-oidc-bff-and-minimal-account-data.md). These controls do
+not change the guest workflow or permit persistence of live provider facts.
+
 ## 6. Out of Scope
 
 The following are explicitly excluded from the MVP:
@@ -224,14 +229,14 @@ These items require separate scope approval before implementation.
 
 ## 7. Initial Data Sources
 
-| Source | Purpose | Authentication |
-| --- | --- | --- |
-| PDOK Location API | Address search and official BAG address reference | None |
-| Kadaster BAG via PDOK | Residential-unit and building records | None |
-| EP-Online REST API | Energy-performance records | Personal API key |
-| CBS geometry via PDOK | Neighbourhood boundaries | None |
-| CBS StatLine OData | Neighbourhood and housing statistics | None |
-| Luchtmeetnet Open API | Current environmental observations | None |
+| Source                | Purpose                                           | Authentication   |
+| --------------------- | ------------------------------------------------- | ---------------- |
+| PDOK Location API     | Address search and official BAG address reference | None             |
+| Kadaster BAG via PDOK | Residential-unit and building records             | None             |
+| EP-Online REST API    | Energy-performance records                        | Personal API key |
+| CBS geometry via PDOK | Neighbourhood boundaries                          | None             |
+| CBS StatLine OData    | Neighbourhood and housing statistics              | None             |
+| Luchtmeetnet Open API | Current environmental observations                | None             |
 
 Each integration must be implemented behind an isolated source-specific
 client. Adding another source requires a documented use case, license and
