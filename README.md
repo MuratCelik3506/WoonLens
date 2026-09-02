@@ -104,8 +104,14 @@ docker compose up --build api frontend
 curl http://localhost:8000/api/v1/health
 ```
 
-Open `http://localhost:3000` for the web shell. The expected API response is
-`{"status":"ok"}`. Run every implemented Python
+Open `http://localhost:3000` for the web application. Compose also starts the
+application PostgreSQL database, an ephemeral Redis session store, and a local
+Keycloak development realm at `http://localhost:8080`. The **Sign in** action
+uses the synthetic user `woonlens-demo` with password
+`local-development-only`. These credentials and the Compose secrets are local
+fixtures and must never be reused in production.
+
+The expected API response is `{"status":"ok"}`. Run every implemented Python
 quality gate in the same container environment:
 
 ```bash
@@ -126,7 +132,16 @@ GET /api/v1/addresses/690240c0-fc13-59d9-8e98-2ef441237a54/overview
 POST /api/v1/comparisons/live
 POST /api/v1/comparison-downloads/json
 POST /api/v1/comparison-downloads/pdf
+PUT  /api/v1/account
+GET  /api/v1/account
 ```
+
+The account endpoints require the configured `woonlens:account` bearer scope.
+Browser clients reach them through the Next.js BFF: Authorization Code and PKCE
+run server-side, Redis stores AES-256-GCM-encrypted short-lived token state, and
+the browser receives only an opaque `HttpOnly` cookie. The initial migration
+stores only an internal account UUID, OIDC issuer, opaque subject, and creation
+time. Guest endpoints remain anonymous and unchanged.
 
 WoonLens uses the current PDOK Location API for search and the PDOK BAG OGC API
 for the selected address detail. Requests and responses are not persisted or

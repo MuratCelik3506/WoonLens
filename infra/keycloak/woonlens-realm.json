@@ -1,0 +1,90 @@
+{
+  "realm": "woonlens",
+  "enabled": true,
+  "displayName": "WoonLens local development",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "loginWithEmailAllowed": false,
+  "duplicateEmailsAllowed": false,
+  "clients": [
+    {
+      "clientId": "woonlens-web",
+      "name": "WoonLens local web BFF",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "woonlens-local-client-only",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "redirectUris": ["http://localhost:3000/api/auth/callback"],
+      "webOrigins": ["http://localhost:3000"],
+      "defaultClientScopes": ["woonlens:account"],
+      "protocolMappers": [
+        {
+          "name": "stable-subject",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "consentRequired": false,
+          "config": {
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "woonlens-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "woonlens-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "woonlens-api",
+      "name": "WoonLens local FastAPI audience",
+      "enabled": true,
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "publicClient": false
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "woonlens:account",
+      "description": "Access the current user's WoonLens account organisation",
+      "protocol": "openid-connect",
+      "attributes": {
+        "display.on.consent.screen": "true",
+        "include.in.token.scope": "true"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "woonlens-demo",
+      "enabled": true,
+      "email": "woonlens-demo@example.invalid",
+      "firstName": "WoonLens",
+      "lastName": "Demo",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "local-development-only",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

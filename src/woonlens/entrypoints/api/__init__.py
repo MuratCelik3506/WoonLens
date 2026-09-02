@@ -4,6 +4,12 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
 
+from woonlens.adapters.identity.oidc import OidcAccessTokenVerifier
+from woonlens.adapters.persistence.accounts import SqlAlchemyAccountRepository
+from woonlens.adapters.persistence.database import (
+    create_database_engine,
+    create_session_factory,
+)
 from woonlens.adapters.reports.pdf import ReportLabPdfRenderer
 from woonlens.adapters.sources.cbs.client import CbsAdministrativeContextAdapter
 from woonlens.adapters.sources.cbs.statline_client import CbsStatlineIndicatorsAdapter
@@ -15,7 +21,9 @@ from woonlens.adapters.sources.pdok.client import (
 )
 from woonlens.adapters.sources.pdok.property_client import PdokBagPropertyAdapter
 from woonlens.application.errors import WoonLensError
+from woonlens.application.ports.identity import AccessTokenVerifier
 from woonlens.application.ports.reports import PdfReportRenderer
+from woonlens.application.services.accounts import AccountService
 from woonlens.application.services.addresses import AddressService
 from woonlens.application.services.administrative import AdministrativeContextService
 from woonlens.application.services.comparison import LiveHomeComparisonService
@@ -25,6 +33,7 @@ from woonlens.application.services.overview import HomeOverviewService
 from woonlens.application.services.property import PropertyDetailsService
 from woonlens.application.services.reporting import ComparisonEvidenceReportService
 from woonlens.bootstrap.settings import Settings, get_settings
+from woonlens.entrypoints.api.accounts import router as accounts_router
 from woonlens.entrypoints.api.addresses import router as addresses_router
 from woonlens.entrypoints.api.comparisons import router as comparisons_router
 from woonlens.entrypoints.api.health import router as health_router
@@ -43,12 +52,41 @@ def create_app(
     comparison_service: LiveHomeComparisonService | None = None,
     report_service: ComparisonEvidenceReportService | None = None,
     pdf_report_renderer: PdfReportRenderer | None = None,
+    identity_verifier: AccessTokenVerifier | None = None,
+    account_service: AccountService | None = None,
 ) -> FastAPI:
     """Create the HTTP application with explicit configuration."""
     resolved_settings = settings or get_settings()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        account_engine = None
+        if identity_verifier is not None and account_service is not None:
+            app.state.identity_verifier = identity_verifier
+            app.state.account_service = account_service
+        elif resolved_settings.account_features_enabled:
+            database_url = resolved_settings.database_url
+            issuer = resolved_settings.oidc_issuer
+            jwks_url = resolved_settings.oidc_jwks_url
+            audience = resolved_settings.oidc_audience
+            if (
+                database_url is None
+                or issuer is None
+                or jwks_url is None
+                or audience is None
+            ):
+                raise RuntimeError("account configuration validation failed")
+            account_engine = create_database_engine(database_url.get_secret_value())
+            app.state.account_service = AccountService(
+                SqlAlchemyAccountRepository(create_session_factory(account_engine))
+            )
+            app.state.identity_verifier = OidcAccessTokenVerifier(
+                issuer=str(issuer),
+                audience=audience,
+                jwks_url=str(jwks_url),
+                required_scope=resolved_settings.oidc_required_scope,
+            )
+
         if address_service is not None:
             app.state.address_service = address_service
             if administrative_context_service is not None:
@@ -74,7 +112,11 @@ def create_app(
                 app.state.pdf_report_renderer = (
                     pdf_report_renderer or ReportLabPdfRenderer()
                 )
-            yield
+            try:
+                yield
+            finally:
+                if account_engine is not None:
+                    await account_engine.dispose()
             return
 
         timeout = httpx.Timeout(
@@ -157,7 +199,11 @@ def create_app(
                 live_comparison_service
             )
             app.state.pdf_report_renderer = ReportLabPdfRenderer()
-            yield
+            try:
+                yield
+            finally:
+                if account_engine is not None:
+                    await account_engine.dispose()
 
     app = FastAPI(
         title="WoonLens API",
@@ -169,6 +215,7 @@ def create_app(
     app.state.settings = resolved_settings
     app.add_exception_handler(WoonLensError, woonlens_error_handler)
     app.include_router(health_router, prefix="/api/v1")
+    app.include_router(accounts_router, prefix="/api/v1")
     app.include_router(addresses_router, prefix="/api/v1")
     app.include_router(comparisons_router, prefix="/api/v1")
     app.include_router(reports_router, prefix="/api/v1")

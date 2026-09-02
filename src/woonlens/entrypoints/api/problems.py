@@ -2,8 +2,11 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 
 from woonlens.application.errors import (
+    AccountFeaturesUnavailableError,
+    AccountNotFoundError,
     AddressNotFoundError,
     AdministrativeContextNotFoundError,
+    AuthenticationError,
     EnergyRegistrationNotFoundError,
     InvalidAddressQueryError,
     NeighborhoodContextNotFoundError,
@@ -18,6 +21,21 @@ from woonlens.application.errors import (
 )
 
 _PROBLEMS: dict[type[WoonLensError], tuple[int, str, str]] = {
+    AuthenticationError: (
+        401,
+        "Authentication required",
+        "A valid account session is required for this request.",
+    ),
+    AccountFeaturesUnavailableError: (
+        503,
+        "Account features unavailable",
+        "Optional account features are not configured for this deployment.",
+    ),
+    AccountNotFoundError: (
+        404,
+        "Account not found",
+        "No WoonLens account exists for the authenticated identity.",
+    ),
     InvalidAddressQueryError: (
         422,
         "Invalid address query",
@@ -92,9 +110,11 @@ async def woonlens_error_handler(request: Request, exc: Exception) -> JSONRespon
         type(exc),
         (500, "Internal server error", "An unexpected error occurred."),
     )
+    headers = {"WWW-Authenticate": "Bearer"} if status == 401 else None
     return JSONResponse(
         status_code=status,
         media_type="application/problem+json",
+        headers=headers,
         content={
             "type": f"https://woonlens.nl/problems/{exc.code}",
             "title": title,

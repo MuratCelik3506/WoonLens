@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, HttpUrl, SecretStr
+from pydantic import Field, HttpUrl, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -46,6 +46,28 @@ class Settings(BaseSettings):
     rivm_luchtmeetnet_metadata_url: HttpUrl = HttpUrl(
         "https://data.rivm.nl/data/luchtmeetnet/Metadata"
     )
+    account_features_enabled: bool = False
+    database_url: SecretStr | None = None
+    oidc_issuer: HttpUrl | None = None
+    oidc_jwks_url: HttpUrl | None = None
+    oidc_audience: str | None = None
+    oidc_required_scope: str = "woonlens:account"
+
+    @model_validator(mode="after")
+    def validate_account_configuration(self) -> "Settings":
+        if self.account_features_enabled and any(
+            value is None
+            for value in (
+                self.database_url,
+                self.oidc_issuer,
+                self.oidc_jwks_url,
+                self.oidc_audience,
+            )
+        ):
+            raise ValueError(
+                "enabled account features require database and OIDC configuration"
+            )
+        return self
 
 
 @lru_cache

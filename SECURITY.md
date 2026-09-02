@@ -65,6 +65,14 @@ They exclude provider facts, address labels, comparison results, reports, and
 automatic search history. Account export, session revocation, deletion, and the
 maximum 35-day encrypted-backup expiry are part of the security boundary.
 
+The local account foundation encrypts Redis login and token state with
+AES-256-GCM and hashes opaque browser handles before using them as Redis keys.
+The checked-in Compose passwords and encryption key are synthetic development
+fixtures. Production configuration rejects the fixture encryption key and
+requires HTTPS front-channel OIDC URLs. FastAPI authentication failures return
+a generic problem response with a `WWW-Authenticate: Bearer` challenge and do
+not disclose token-validation details.
+
 ## Supported versions
 
 There are no supported releases yet. This section will be updated when the
