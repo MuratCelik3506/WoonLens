@@ -41,7 +41,11 @@ export function HomeDetailPanels({
   labels: ReadonlyMap<string, string>;
 }>) {
   return (
-    <section aria-labelledby="home-details-title" className="mt-8">
+    <section
+      aria-labelledby="home-details-title"
+      className="mt-8 scroll-mt-6"
+      id="home-details"
+    >
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">
         One coherent live snapshot
       </p>

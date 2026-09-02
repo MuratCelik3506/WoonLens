@@ -100,6 +100,27 @@ export function ComparisonBuilder() {
           onRemove={removeHome}
         />
       </section>
+      {comparison.isPending ? (
+        <section
+          aria-labelledby="comparison-loading-title"
+          aria-live="polite"
+          className="mx-auto max-w-7xl px-5 pb-16 lg:px-8"
+          role="status"
+        >
+          <div className="rounded-xl border border-border bg-surface p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">
+              Live request in progress
+            </p>
+            <h2 className="mt-2 text-xl font-semibold" id="comparison-loading-title">
+              Gathering the current official evidence
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              WoonLens is requesting independent sources. This is not a progress
+              estimate; some providers may return partial or unavailable evidence.
+            </p>
+          </div>
+        </section>
+      ) : null}
       {comparison.data && resultMatchesSelection ? (
         <ComparisonResults comparison={comparison.data} labels={labels} />
       ) : null}

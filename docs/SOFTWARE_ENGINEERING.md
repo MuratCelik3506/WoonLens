@@ -326,6 +326,14 @@ remain visible through progressive disclosure. Selection changes invalidate the
 entire result and its explanations together so rule output cannot be attached to
 stale evidence.
 
+The optional map is split into a client-only dynamic chunk and loads only after
+explicit user action. Its MapLibre worker and shared module are copied from the
+installed package into a same-origin public directory before development and
+production builds. The Docker development image grants only that public
+directory and `.next` to its unprivileged Node user; the production image copies
+the generated public worker assets explicitly. Textual spatial evidence remains
+the required fallback and does not depend on WebGL or the tile host.
+
 Per-home detail panels are projected from the overview already embedded in the
 live-comparison response. The frontend allowlists the displayed BAG, EP-Online,
 CBS, and Luchtmeetnet fields instead of rendering arbitrary provider payloads.

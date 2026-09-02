@@ -27,7 +27,10 @@ export function ExplainableEvidence({
   );
 
   return (
-    <div className="mt-8 grid gap-8 xl:grid-cols-2">
+    <div
+      className="mt-8 grid scroll-mt-6 gap-8 xl:grid-cols-2"
+      id="explainable-evidence"
+    >
       <section
         aria-labelledby="explainable-differences-title"
         className="rounded-xl border border-border bg-surface p-6"

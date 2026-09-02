@@ -112,6 +112,26 @@ WoonLens must therefore treat RIVM data conservatively:
   license field `Terms require per-dataset verification` rather than inventing
   a blanket license name.
 
+### OpenFreeMap, OpenMapTiles, and OpenStreetMap
+
+- The optional browser map uses MapLibre GL JS with the OpenFreeMap Positron
+  style at `https://tiles.openfreemap.org/styles/positron`.
+- OpenFreeMap requires attribution and identifies its software project as MIT;
+  its map data comes from OpenStreetMap and its styles/schema incorporate
+  OpenMapTiles components with their own notices.
+- The interface displays `Map © OpenFreeMap · © OpenMapTiles · data ©
+  OpenStreetMap contributors` alongside MapLibre's map attribution.
+- The public OpenFreeMap instance requires no account, cookie, or API key and
+  offers no SLA. Its published privacy policy says ordinary logs are anonymized
+  without IP addresses, while temporary IP logging may be enabled for security
+  incidents for up to 30 days.
+- The map is loaded only after an explicit user action. That action causes the
+  browser to contact OpenFreeMap directly and disclose ordinary request metadata.
+- WoonLens does not persist selected coordinates, station coordinates, map
+  viewport state, or returned tiles. A deployment with stricter privacy or
+  availability requirements should self-host the open stack after reviewing
+  storage, update, attribution, and operational obligations.
+
 ## Repository data policy
 
 The following must not be committed:
