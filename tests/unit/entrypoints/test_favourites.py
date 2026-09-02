@@ -39,6 +39,9 @@ class AccountRepository:
     async def get_or_create(self, identity: ExternalIdentity) -> Account:
         return ACCOUNT
 
+    async def delete_by_identity(self, identity: ExternalIdentity) -> bool:
+        return True
+
 
 class FavouriteServiceStub:
     async def list(self, identity: ExternalIdentity):  # type: ignore[no-untyped-def]

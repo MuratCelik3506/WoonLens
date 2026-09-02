@@ -24,6 +24,9 @@ class Accounts:
     async def get_or_create(self, identity: ExternalIdentity) -> Account:
         return Account(OWNER_ID, identity, NOW)
 
+    async def delete_by_identity(self, identity: ExternalIdentity) -> bool:
+        return True
+
 
 class Comparisons:
     item: SavedComparison | None = None

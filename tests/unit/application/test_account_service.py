@@ -3,8 +3,14 @@ from uuid import UUID
 
 import pytest
 
+from woonlens.application.errors import AccountNotFoundError
 from woonlens.application.services.accounts import AccountService
-from woonlens.domain.accounts import Account, ExternalIdentity
+from woonlens.domain.accounts import (
+    Account,
+    ExternalIdentity,
+    FavouriteAddressReference,
+    SavedComparison,
+)
 
 
 class InMemoryAccountRepository:
@@ -25,6 +31,61 @@ class InMemoryAccountRepository:
             )
         return self.account
 
+    async def delete_by_identity(self, identity: ExternalIdentity) -> bool:
+        if self.account is None or self.account.identity != identity:
+            return False
+        self.account = None
+        return True
+
+
+class InMemoryFavourites:
+    def __init__(self, item: FavouriteAddressReference) -> None:
+        self.item = item
+
+    async def list_for_owner(
+        self, account_id: UUID
+    ) -> tuple[FavouriteAddressReference, ...]:
+        return (self.item,)
+
+    async def get_for_owner(
+        self, account_id: UUID, favourite_id: UUID
+    ) -> FavouriteAddressReference | None:
+        return self.item if self.item.id == favourite_id else None
+
+    async def add(
+        self, account_id: UUID, pdok_address_id: UUID
+    ) -> FavouriteAddressReference:
+        return self.item
+
+    async def delete_for_owner(self, account_id: UUID, favourite_id: UUID) -> bool:
+        return self.item.id == favourite_id
+
+
+class InMemoryComparisons:
+    def __init__(self, item: SavedComparison) -> None:
+        self.item = item
+
+    async def list_for_owner(self, account_id: UUID) -> tuple[SavedComparison, ...]:
+        return (self.item,)
+
+    async def get_for_owner(
+        self, account_id: UUID, comparison_id: UUID
+    ) -> SavedComparison | None:
+        return self.item if self.item.id == comparison_id else None
+
+    async def create(
+        self, account_id: UUID, name: str, address_ids: tuple[UUID, ...]
+    ) -> SavedComparison:
+        return self.item
+
+    async def update_name(
+        self, account_id: UUID, comparison_id: UUID, name: str
+    ) -> SavedComparison | None:
+        return self.item if self.item.id == comparison_id else None
+
+    async def delete_for_owner(self, account_id: UUID, comparison_id: UUID) -> bool:
+        return self.item.id == comparison_id
+
 
 @pytest.mark.anyio
 async def test_account_service_idempotently_ensures_and_reads_account() -> None:
@@ -43,3 +104,38 @@ async def test_account_service_idempotently_ensures_and_reads_account() -> None:
         )
         is None
     )
+
+
+@pytest.mark.anyio
+async def test_account_service_exports_owned_recipes_and_deletes_account() -> None:
+    repository = InMemoryAccountRepository()
+    identity = ExternalIdentity("https://identity.example", "subject")
+    favourite = FavouriteAddressReference(
+        UUID("6820515e-f196-4481-aa23-ace8faf1d070"),
+        UUID("e30d6355-d2f1-442f-a073-abe003bec76c"),
+        datetime(2026, 9, 2, tzinfo=UTC),
+    )
+    comparison = SavedComparison(
+        UUID("aefb6760-e730-44e8-b655-adfd44f21ca0"),
+        "Shortlist",
+        (
+            UUID("e30d6355-d2f1-442f-a073-abe003bec76c"),
+            UUID("3f439b54-0a81-4d90-acf0-2cdb75fc8626"),
+        ),
+        datetime(2026, 9, 2, tzinfo=UTC),
+        datetime(2026, 9, 2, tzinfo=UTC),
+    )
+    service = AccountService(
+        repository, InMemoryFavourites(favourite), InMemoryComparisons(comparison)
+    )
+    account = await service.ensure_account(identity)
+
+    snapshot = await service.export_data(identity)
+    assert snapshot.account == account
+    assert snapshot.favourites == (favourite,)
+    assert snapshot.saved_comparisons == (comparison,)
+
+    await service.delete_account(identity)
+    assert await service.current_account(identity) is None
+    with pytest.raises(AccountNotFoundError):
+        await service.delete_account(identity)

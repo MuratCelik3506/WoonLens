@@ -95,7 +95,15 @@ def create_app(
             account_engine = create_database_engine(database_url.get_secret_value())
             session_factory = create_session_factory(account_engine)
             account_repository = SqlAlchemyAccountRepository(session_factory)
-            app.state.account_service = AccountService(account_repository)
+            favourite_repository = SqlAlchemyFavouriteRepository(session_factory)
+            saved_comparison_repository = SqlAlchemySavedComparisonRepository(
+                session_factory
+            )
+            app.state.account_service = AccountService(
+                account_repository,
+                favourite_repository,
+                saved_comparison_repository,
+            )
             app.state.identity_verifier = OidcAccessTokenVerifier(
                 issuer=str(issuer),
                 audience=audience,
@@ -160,12 +168,12 @@ def create_app(
             if resolved_settings.account_features_enabled:
                 app.state.favourite_service = FavouriteService(
                     account_repository,
-                    SqlAlchemyFavouriteRepository(session_factory),
+                    favourite_repository,
                     app.state.address_service,
                 )
                 app.state.saved_comparison_service = SavedComparisonService(
                     account_repository,
-                    SqlAlchemySavedComparisonRepository(session_factory),
+                    saved_comparison_repository,
                 )
             administrative_adapter = CbsAdministrativeContextAdapter(
                 client,

@@ -2,7 +2,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -52,6 +52,18 @@ class SqlAlchemyAccountRepository:
             if row is None:
                 row = (await session.scalars(self._identity_query(identity))).one()
             return self._to_domain(row)
+
+    async def delete_by_identity(self, identity: ExternalIdentity) -> bool:
+        async with self._session_factory() as session, session.begin():
+            deleted_id = await session.scalar(
+                delete(AccountRow)
+                .where(
+                    AccountRow.issuer == identity.issuer,
+                    AccountRow.subject == identity.subject,
+                )
+                .returning(AccountRow.id)
+            )
+            return deleted_id is not None
 
     @staticmethod
     def _identity_query(identity: ExternalIdentity):  # type: ignore[no-untyped-def]
