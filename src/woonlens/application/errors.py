@@ -18,6 +18,10 @@ class AccountNotFoundError(WoonLensError):
     code = "account_not_found"
 
 
+class FavouriteNotFoundError(WoonLensError):
+    code = "favourite_not_found"
+
+
 class InvalidAddressQueryError(WoonLensError):
     code = "invalid_address_query"
 

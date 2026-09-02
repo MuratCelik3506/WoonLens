@@ -10,6 +10,7 @@ from woonlens.adapters.persistence.database import (
     create_database_engine,
     create_session_factory,
 )
+from woonlens.adapters.persistence.favourites import SqlAlchemyFavouriteRepository
 from woonlens.adapters.reports.pdf import ReportLabPdfRenderer
 from woonlens.adapters.sources.cbs.client import CbsAdministrativeContextAdapter
 from woonlens.adapters.sources.cbs.statline_client import CbsStatlineIndicatorsAdapter
@@ -28,6 +29,7 @@ from woonlens.application.services.addresses import AddressService
 from woonlens.application.services.administrative import AdministrativeContextService
 from woonlens.application.services.comparison import LiveHomeComparisonService
 from woonlens.application.services.energy import EnergyRegistrationService
+from woonlens.application.services.favourites import FavouriteService
 from woonlens.application.services.indicators import NeighborhoodIndicatorsService
 from woonlens.application.services.overview import HomeOverviewService
 from woonlens.application.services.property import PropertyDetailsService
@@ -36,6 +38,7 @@ from woonlens.bootstrap.settings import Settings, get_settings
 from woonlens.entrypoints.api.accounts import router as accounts_router
 from woonlens.entrypoints.api.addresses import router as addresses_router
 from woonlens.entrypoints.api.comparisons import router as comparisons_router
+from woonlens.entrypoints.api.favourites import router as favourites_router
 from woonlens.entrypoints.api.health import router as health_router
 from woonlens.entrypoints.api.problems import woonlens_error_handler
 from woonlens.entrypoints.api.reports import router as reports_router
@@ -54,6 +57,7 @@ def create_app(
     pdf_report_renderer: PdfReportRenderer | None = None,
     identity_verifier: AccessTokenVerifier | None = None,
     account_service: AccountService | None = None,
+    favourite_service: FavouriteService | None = None,
 ) -> FastAPI:
     """Create the HTTP application with explicit configuration."""
     resolved_settings = settings or get_settings()
@@ -64,6 +68,8 @@ def create_app(
         if identity_verifier is not None and account_service is not None:
             app.state.identity_verifier = identity_verifier
             app.state.account_service = account_service
+            if favourite_service is not None:
+                app.state.favourite_service = favourite_service
         elif resolved_settings.account_features_enabled:
             database_url = resolved_settings.database_url
             issuer = resolved_settings.oidc_issuer
@@ -77,9 +83,9 @@ def create_app(
             ):
                 raise RuntimeError("account configuration validation failed")
             account_engine = create_database_engine(database_url.get_secret_value())
-            app.state.account_service = AccountService(
-                SqlAlchemyAccountRepository(create_session_factory(account_engine))
-            )
+            session_factory = create_session_factory(account_engine)
+            account_repository = SqlAlchemyAccountRepository(session_factory)
+            app.state.account_service = AccountService(account_repository)
             app.state.identity_verifier = OidcAccessTokenVerifier(
                 issuer=str(issuer),
                 audience=audience,
@@ -141,6 +147,12 @@ def create_app(
                 bag_adapter,
                 suggestion_limit=resolved_settings.address_suggestion_limit,
             )
+            if resolved_settings.account_features_enabled:
+                app.state.favourite_service = FavouriteService(
+                    account_repository,
+                    SqlAlchemyFavouriteRepository(session_factory),
+                    app.state.address_service,
+                )
             administrative_adapter = CbsAdministrativeContextAdapter(
                 client,
                 str(resolved_settings.pdok_cbs_neighborhoods_api_url),
@@ -216,6 +228,7 @@ def create_app(
     app.add_exception_handler(WoonLensError, woonlens_error_handler)
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(accounts_router, prefix="/api/v1")
+    app.include_router(favourites_router, prefix="/api/v1")
     app.include_router(addresses_router, prefix="/api/v1")
     app.include_router(comparisons_router, prefix="/api/v1")
     app.include_router(reports_router, prefix="/api/v1")

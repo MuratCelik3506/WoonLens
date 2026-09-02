@@ -134,6 +134,10 @@ POST /api/v1/comparison-downloads/json
 POST /api/v1/comparison-downloads/pdf
 PUT  /api/v1/account
 GET  /api/v1/account
+GET  /api/v1/favourites
+POST /api/v1/favourites
+DELETE /api/v1/favourites/{id}
+GET  /api/v1/favourites/{id}/address
 ```
 
 The account endpoints require the configured `woonlens:account` bearer scope.
@@ -141,7 +145,11 @@ Browser clients reach them through the Next.js BFF: Authorization Code and PKCE
 run server-side, Redis stores AES-256-GCM-encrypted short-lived token state, and
 the browser receives only an opaque `HttpOnly` cookie. The initial migration
 stores only an internal account UUID, OIDC issuer, opaque subject, and creation
-time. Guest endpoints remain anonymous and unchanged.
+timestamp. Favourite storage adds only an owner-scoped record UUID, an opaque
+PDOK address UUID, and its creation timestamp. Reopening a favourite resolves
+the current address through PDOK; display labels and official property facts
+remain request-scoped and are never written to the account database.
+Guest endpoints remain anonymous and unchanged.
 
 WoonLens uses the current PDOK Location API for search and the PDOK BAG OGC API
 for the selected address detail. Requests and responses are not persisted or
