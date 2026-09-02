@@ -36,6 +36,9 @@ class Accounts:
     async def get_or_create(self, identity: ExternalIdentity) -> Account:
         return await self.find_by_identity(identity)
 
+    async def delete_by_identity(self, identity: ExternalIdentity) -> bool:
+        return True
+
 
 class Service:
     async def list(self, identity: ExternalIdentity) -> tuple[SavedComparison, ...]:

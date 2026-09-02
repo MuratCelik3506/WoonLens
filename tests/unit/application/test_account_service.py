@@ -47,6 +47,19 @@ class InMemoryFavourites:
     ) -> tuple[FavouriteAddressReference, ...]:
         return (self.item,)
 
+    async def get_for_owner(
+        self, account_id: UUID, favourite_id: UUID
+    ) -> FavouriteAddressReference | None:
+        return self.item if self.item.id == favourite_id else None
+
+    async def add(
+        self, account_id: UUID, pdok_address_id: UUID
+    ) -> FavouriteAddressReference:
+        return self.item
+
+    async def delete_for_owner(self, account_id: UUID, favourite_id: UUID) -> bool:
+        return self.item.id == favourite_id
+
 
 class InMemoryComparisons:
     def __init__(self, item: SavedComparison) -> None:
@@ -54,6 +67,24 @@ class InMemoryComparisons:
 
     async def list_for_owner(self, account_id: UUID) -> tuple[SavedComparison, ...]:
         return (self.item,)
+
+    async def get_for_owner(
+        self, account_id: UUID, comparison_id: UUID
+    ) -> SavedComparison | None:
+        return self.item if self.item.id == comparison_id else None
+
+    async def create(
+        self, account_id: UUID, name: str, address_ids: tuple[UUID, ...]
+    ) -> SavedComparison:
+        return self.item
+
+    async def update_name(
+        self, account_id: UUID, comparison_id: UUID, name: str
+    ) -> SavedComparison | None:
+        return self.item if self.item.id == comparison_id else None
+
+    async def delete_for_owner(self, account_id: UUID, comparison_id: UUID) -> bool:
+        return self.item.id == comparison_id
 
 
 @pytest.mark.anyio
@@ -96,7 +127,7 @@ async def test_account_service_exports_owned_recipes_and_deletes_account() -> No
     )
     service = AccountService(
         repository, InMemoryFavourites(favourite), InMemoryComparisons(comparison)
-    )  # type: ignore[arg-type]
+    )
     account = await service.ensure_account(identity)
 
     snapshot = await service.export_data(identity)
