@@ -1,0 +1,19 @@
+import importlib
+
+
+def test_initial_account_migration_has_upgrade_and_downgrade(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    migration = importlib.import_module(
+        "migrations.versions.20260902_01_create_account"
+    )
+    created: list[str] = []
+    dropped: list[str] = []
+    monkeypatch.setattr(
+        migration.op, "create_table", lambda name, *args: created.append(name)
+    )
+    monkeypatch.setattr(migration.op, "drop_table", dropped.append)
+
+    migration.upgrade()
+    migration.downgrade()
+
+    assert created == ["account"]
+    assert dropped == ["account"]

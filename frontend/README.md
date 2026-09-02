@@ -17,6 +17,15 @@ Open `http://localhost:3000`. The frontend health proxy reaches the API through
 the internal Docker service name; browser-visible configuration never contains
 provider credentials.
 
+The optional account button starts a local Keycloak Authorization Code + PKCE
+flow. The callback provisions the minimum FastAPI account and keeps provider
+tokens in an expiring, AES-256-GCM-encrypted Redis session. Browser JavaScript
+can query only `/api/auth/session`; it never receives an access, refresh, or ID
+token. Local login uses the synthetic `woonlens-demo` /
+`local-development-only` fixture and is not a production identity setup.
+Deployments that do not set `WOONLENS_ACCOUNT_FEATURES_ENABLED=true` hide the
+account control while preserving the complete guest comparison journey.
+
 For frontend-only development:
 
 ```bash

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 type AppShellProps = Readonly<{
+  accountAccess?: ReactNode;
   comparisonExperience?: ReactNode;
   systemStatus?: ReactNode;
 }>;
@@ -13,7 +14,11 @@ const navigation = [
   ["About", "#about"],
 ] as const;
 
-export function AppShell({ comparisonExperience, systemStatus }: AppShellProps) {
+export function AppShell({
+  accountAccess,
+  comparisonExperience,
+  systemStatus,
+}: AppShellProps) {
   return (
     <div className="min-h-screen bg-page text-ink">
       <a
@@ -45,15 +50,18 @@ export function AppShell({ comparisonExperience, systemStatus }: AppShellProps) 
             </ul>
           </nav>
 
-          <a
-            className="inline-flex min-h-11 items-center rounded-lg border border-border px-4 text-sm font-medium no-underline hover:bg-accent-soft"
-            href="https://github.com/MuratCelik3506/WoonLens"
-            rel="noreferrer"
-            target="_blank"
-          >
-            GitHub
-            <span className="sr-only"> (opens in a new tab)</span>
-          </a>
+          <div className="flex items-center gap-2">
+            {accountAccess}
+            <a
+              className="hidden min-h-11 items-center rounded-lg border border-border px-4 text-sm font-medium no-underline hover:bg-accent-soft sm:inline-flex"
+              href="https://github.com/MuratCelik3506/WoonLens"
+              rel="noreferrer"
+              target="_blank"
+            >
+              GitHub
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          </div>
         </div>
       </header>
 

@@ -4,6 +4,20 @@ class WoonLensError(Exception):
     code = "woonlens_error"
 
 
+class AuthenticationError(WoonLensError):
+    """The supplied authentication credential is missing or invalid."""
+
+    code = "authentication_failed"
+
+
+class AccountFeaturesUnavailableError(WoonLensError):
+    code = "account_features_unavailable"
+
+
+class AccountNotFoundError(WoonLensError):
+    code = "account_not_found"
+
+
 class InvalidAddressQueryError(WoonLensError):
     code = "invalid_address_query"
 

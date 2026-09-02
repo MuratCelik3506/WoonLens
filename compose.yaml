@@ -1,4 +1,56 @@
 services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: woonlens
+      POSTGRES_USER: woonlens
+      POSTGRES_PASSWORD: woonlens-local-database-only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U woonlens -d woonlens"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:8.2.1-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "6379:6379"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.3
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: local-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: local-development-only
+      KC_HEALTH_ENABLED: "true"
+      KC_HOSTNAME: http://localhost:8080
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "bash -c \"exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '200 OK' <&3\"",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    volumes:
+      - ./infra/keycloak/woonlens-realm.json:/opt/keycloak/data/import/woonlens-realm.json:ro
+      - keycloak_data:/opt/keycloak/data
+
   api:
     build:
       context: .
@@ -7,6 +59,17 @@ services:
       WOONLENS_ENVIRONMENT: development
       WOONLENS_LOG_LEVEL: DEBUG
       WOONLENS_EP_ONLINE_API_KEY: ${WOONLENS_EP_ONLINE_API_KEY:-}
+      WOONLENS_ACCOUNT_FEATURES_ENABLED: "true"
+      WOONLENS_DATABASE_URL: postgresql+asyncpg://woonlens:woonlens-local-database-only@postgres:5432/woonlens
+      WOONLENS_OIDC_ISSUER: http://localhost:8080/realms/woonlens
+      WOONLENS_OIDC_JWKS_URL: http://keycloak:8080/realms/woonlens/protocol/openid-connect/certs
+      WOONLENS_OIDC_AUDIENCE: woonlens-api
+      WOONLENS_OIDC_REQUIRED_SCOPE: woonlens:account
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
     ports:
       - "8000:8000"
     volumes:
@@ -25,11 +88,24 @@ services:
     build:
       context: ./frontend
       target: development
-    depends_on:
-      - api
     environment:
       NEXT_PUBLIC_WOONLENS_API_BASE_URL: http://localhost:8000
       WOONLENS_API_BASE_URL: http://api:8000
+      WOONLENS_ACCOUNT_FEATURES_ENABLED: "true"
+      WOONLENS_OIDC_ISSUER: http://localhost:8080/realms/woonlens
+      WOONLENS_OIDC_INTERNAL_ORIGIN: http://keycloak:8080
+      WOONLENS_OIDC_CLIENT_ID: woonlens-web
+      WOONLENS_OIDC_CLIENT_SECRET: woonlens-local-client-only
+      WOONLENS_OIDC_REDIRECT_URI: http://localhost:3000/api/auth/callback
+      WOONLENS_REDIS_URL: redis://redis:6379/0
+      WOONLENS_SESSION_ENCRYPTION_KEY: bG9jYWwtZGV2ZWxvcG1lbnQtc2Vzc2lvbi1rZXkhISE=
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
     ports:
       - "3000:3000"
     volumes:
@@ -48,3 +124,5 @@ services:
 
 volumes:
   frontend_next_cache:
+  postgres_data:
+  keycloak_data:

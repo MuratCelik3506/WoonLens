@@ -377,6 +377,14 @@ never receives provider tokens, and FastAPI independently validates credentials
 and enforces owner-scoped access. PostgreSQL stores only the account identity
 mapping, explicit favourite address UUIDs, and named ordered comparison recipes.
 
+The implemented account foundation uses an Alembic-managed PostgreSQL account
+table with a unique OIDC issuer/subject pair. The Next.js BFF performs
+Authorization Code + PKCE and stores short-lived credentials encrypted with
+AES-256-GCM in Redis behind hashed opaque handles. FastAPI validates the
+asymmetric JWT signature, issuer, audience, lifetime, and required scope before
+mapping the external identity. Keycloak supplies synthetic local OIDC behaviour
+in Compose; it is not the selected production identity provider.
+
 ## 7. Testing Strategy
 
 ### Decision

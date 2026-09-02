@@ -21,8 +21,10 @@
     "@tanstack/react-query": "^5.102.8",
     "maplibre-gl": "^6.6.0",
     "next": "16.3.4",
+    "openid-client": "^6.8.7",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "redis": "^6.2.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
