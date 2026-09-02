@@ -64,6 +64,11 @@ contain only the identity mapping and explicitly saved organisation recipes.
 They exclude provider facts, address labels, comparison results, reports, and
 automatic search history. Account export, session revocation, deletion, and the
 maximum 35-day encrypted-backup expiry are part of the security boundary.
+The JSON export deliberately excludes OIDC issuer/subject values, provider
+tokens, address labels, provider responses, and generated reports. Destructive
+account deletion requires an authenticated, exact same-origin BFF request;
+session state is removed only after the owner-scoped database deletion succeeds.
+Deleting WoonLens data never deletes the external identity-provider account.
 
 The local account foundation encrypts Redis login and token state with
 AES-256-GCM and hashes opaque browser handles before using them as Redis keys.

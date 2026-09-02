@@ -387,6 +387,13 @@ Named comparisons retain only a length-limited name and two to five ordered,
 unique PDOK address UUIDs. Rename, run, and delete queries are owner-scoped;
 running a saved recipe calls the existing live comparison service and stores no
 result.
+The account lifecycle uses the same owner boundary. Its versioned JSON export
+contains application-owned metadata and recipes but never exports the OIDC
+issuer, subject, access tokens, or freshly fetched provider facts. Deletion is
+one owner-scoped account-row transaction; database cascades remove favourites,
+saved comparisons, and their ordered address references atomically. After a
+successful backend deletion, the BFF revokes the Redis session and clears the
+opaque browser cookie. The external identity-provider account remains intact.
 The Next.js BFF performs
 Authorization Code + PKCE and stores short-lived credentials encrypted with
 AES-256-GCM in Redis behind hashed opaque handles. FastAPI validates the

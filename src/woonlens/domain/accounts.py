@@ -64,3 +64,12 @@ class SavedComparison:
             raise ValueError("saved comparison addresses must be unique")
         if self.created_at.tzinfo is None or self.updated_at.tzinfo is None:
             raise ValueError("saved comparison timestamps must be timezone-aware")
+
+
+@dataclass(frozen=True, slots=True)
+class AccountDataExport:
+    """Portable snapshot of application-owned account data only."""
+
+    account: Account
+    favourites: tuple[FavouriteAddressReference, ...]
+    saved_comparisons: tuple[SavedComparison, ...]

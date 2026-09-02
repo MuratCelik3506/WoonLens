@@ -134,6 +134,8 @@ POST /api/v1/comparison-downloads/json
 POST /api/v1/comparison-downloads/pdf
 PUT  /api/v1/account
 GET  /api/v1/account
+GET  /api/v1/account/export
+DELETE /api/v1/account
 GET  /api/v1/favourites
 POST /api/v1/favourites
 DELETE /api/v1/favourites/{id}
@@ -159,6 +161,12 @@ Guest endpoints remain anonymous and unchanged.
 Saved comparisons retain only a user-supplied name and two to five ordered,
 opaque PDOK address UUIDs. Opening a list resolves current address labels;
 running it invokes the same live comparison pipeline as the guest journey.
+Signed-in users can download a versioned JSON export containing only their
+WoonLens account metadata, favourite address references, and ordered saved
+comparison recipes. Account deletion removes those records together in one
+database transaction, ends the local browser session, and does not delete or
+modify the user's external OIDC identity. Neither lifecycle operation changes
+the anonymous guest journey.
 
 WoonLens uses the current PDOK Location API for search and the PDOK BAG OGC API
 for the selected address detail. Requests and responses are not persisted or

@@ -22,6 +22,27 @@ class AccountResponse(BaseModel):
     created_at: datetime
 
 
+class FavouriteExportResponse(BaseModel):
+    id: UUID
+    pdok_address_id: UUID
+    created_at: datetime
+
+
+class SavedComparisonExportResponse(BaseModel):
+    id: UUID
+    name: str
+    address_ids: tuple[UUID, ...]
+    created_at: datetime
+    updated_at: datetime
+
+
+class AccountDataExportResponse(BaseModel):
+    schema_version: str = "1.0"
+    account: AccountResponse
+    favourites: tuple[FavouriteExportResponse, ...]
+    saved_comparisons: tuple[SavedComparisonExportResponse, ...]
+
+
 def _account_dependencies(
     request: Request,
 ) -> tuple[AccessTokenVerifier, AccountService]:
@@ -76,3 +97,50 @@ async def current_account(
         raise AccountNotFoundError
     _response_headers(response)
     return AccountResponse(id=account.id, created_at=account.created_at)
+
+
+@router.get("/export", response_model=AccountDataExportResponse)
+async def export_account_data(
+    request: Request,
+    response: Response,
+    identity: Annotated[ExternalIdentity, Depends(_identity)],
+) -> AccountDataExportResponse:
+    """Export only the current account's application-owned data."""
+    _, service = _account_dependencies(request)
+    snapshot = await service.export_data(identity)
+    _response_headers(response)
+    return AccountDataExportResponse(
+        account=AccountResponse(
+            id=snapshot.account.id, created_at=snapshot.account.created_at
+        ),
+        favourites=tuple(
+            FavouriteExportResponse(
+                id=item.id,
+                pdok_address_id=item.pdok_address_id,
+                created_at=item.created_at,
+            )
+            for item in snapshot.favourites
+        ),
+        saved_comparisons=tuple(
+            SavedComparisonExportResponse(
+                id=item.id,
+                name=item.name,
+                address_ids=item.address_ids,
+                created_at=item.created_at,
+                updated_at=item.updated_at,
+            )
+            for item in snapshot.saved_comparisons
+        ),
+    )
+
+
+@router.delete("", status_code=204)
+async def delete_account(
+    request: Request,
+    response: Response,
+    identity: Annotated[ExternalIdentity, Depends(_identity)],
+) -> None:
+    """Delete the current WoonLens account without touching its OIDC identity."""
+    _, service = _account_dependencies(request)
+    await service.delete_account(identity)
+    _response_headers(response)

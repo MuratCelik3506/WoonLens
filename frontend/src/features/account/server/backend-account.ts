@@ -17,6 +17,26 @@ export async function fetchBackendAccount(
   return requestAccount("GET", accessToken);
 }
 
+export async function exportBackendAccountData(accessToken: string): Promise<unknown> {
+  const url = new URL("/api/v1/account/export", getAccountServerConfig().apiBaseUrl);
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error(`account export failed (${response.status})`);
+  return response.json();
+}
+
+export async function deleteBackendAccount(accessToken: string): Promise<void> {
+  const url = new URL("/api/v1/account", getAccountServerConfig().apiBaseUrl);
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error(`account deletion failed (${response.status})`);
+}
+
 async function requestAccount(
   method: "GET" | "PUT",
   accessToken: string,

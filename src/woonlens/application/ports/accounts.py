@@ -16,6 +16,9 @@ class AccountRepository(Protocol):
     async def get_or_create(self, identity: ExternalIdentity) -> Account:
         """Return one idempotently created account for the identity."""
 
+    async def delete_by_identity(self, identity: ExternalIdentity) -> bool:
+        """Delete one account and its application-owned children atomically."""
+
 
 class FavouriteRepository(Protocol):
     async def list_for_owner(
