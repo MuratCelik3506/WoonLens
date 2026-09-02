@@ -33,17 +33,28 @@ export function useFavourites(onNotice: (notice: string) => void) {
   });
   const save = useMutation({
     mutationFn: saveFavourite,
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["favourites"] });
+    },
     onError: () => onNotice("The favourite could not be saved. Try again."),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["favourites"] });
+    onSuccess: (created) => {
+      queryClient.setQueryData<readonly Favourite[]>(["favourites"], (current = []) =>
+        current.some((item) => item.pdokAddressId === created.pdokAddressId)
+          ? current
+          : [created, ...current],
+      );
       onNotice("Address saved as a favourite. Official facts were not stored.");
     },
+    scope: { id: "save-favourite" },
   });
   const remove = useMutation({
     mutationFn: removeFavourite,
     onError: () => onNotice("The favourite could not be removed. Try again."),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["favourites"] });
+    onSuccess: (_result, removedId) => {
+      queryClient.setQueryData<readonly Favourite[]>(["favourites"], (current = []) =>
+        current.filter((item) => item.id !== removedId),
+      );
+      queryClient.removeQueries({ queryKey: ["favourite-address", removedId] });
       onNotice("Favourite removed.");
     },
   });

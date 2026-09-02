@@ -28,7 +28,7 @@ export async function listFavourites(): Promise<readonly Favourite[]> {
   });
 }
 
-export async function saveFavourite(pdokAddressId: string): Promise<void> {
+export async function saveFavourite(pdokAddressId: string): Promise<Favourite> {
   const response = await fetch("/api/favourites", {
     body: JSON.stringify({ pdok_address_id: pdokAddressId }),
     headers: { "Content-Type": "application/json" },
@@ -36,6 +36,7 @@ export async function saveFavourite(pdokAddressId: string): Promise<void> {
   });
   if (!response.ok)
     throw new Error(`favourite could not be saved (${response.status})`);
+  return parseFavourite(await response.json());
 }
 
 export async function removeFavourite(id: string): Promise<void> {
@@ -67,5 +68,23 @@ export async function resolveFavourite(id: string): Promise<AddressSuggestion> {
     id: value.id,
     displayName: `${value.street} ${value.house_number}${addition ? ` ${addition}` : ""}, ${value.postal_code} ${value.city}`,
     source: { provider: source.provider, dataset: source.dataset },
+  };
+}
+
+function parseFavourite(value: unknown): Favourite {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    typeof (value as Record<string, unknown>).id !== "string" ||
+    typeof (value as Record<string, unknown>).pdok_address_id !== "string" ||
+    typeof (value as Record<string, unknown>).created_at !== "string"
+  ) {
+    throw new Error("invalid favourite response");
+  }
+  const item = value as Record<string, string>;
+  return {
+    id: item.id,
+    pdokAddressId: item.pdok_address_id,
+    createdAt: item.created_at,
   };
 }

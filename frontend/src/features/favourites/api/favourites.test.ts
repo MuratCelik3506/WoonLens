@@ -37,10 +37,22 @@ describe("favourites API", () => {
   });
 
   it("sends only the opaque PDOK identifier when saving", async () => {
-    const fetcher = vi.fn().mockResolvedValue(new Response("{}"));
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          created_at: "2026-09-02T12:00:00Z",
+          id: "favourite-id",
+          pdok_address_id: "address-id",
+        }),
+      ),
+    );
     vi.stubGlobal("fetch", fetcher);
 
-    await saveFavourite("address-id");
+    await expect(saveFavourite("address-id")).resolves.toEqual({
+      createdAt: "2026-09-02T12:00:00Z",
+      id: "favourite-id",
+      pdokAddressId: "address-id",
+    });
 
     expect(JSON.parse(fetcher.mock.calls[0][1].body as string)).toEqual({
       pdok_address_id: "address-id",
