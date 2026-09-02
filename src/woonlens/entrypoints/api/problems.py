@@ -8,6 +8,7 @@ from woonlens.application.errors import (
     AdministrativeContextNotFoundError,
     AuthenticationError,
     EnergyRegistrationNotFoundError,
+    FavouriteNotFoundError,
     InvalidAddressQueryError,
     NeighborhoodContextNotFoundError,
     PropertyDetailsNotFoundError,
@@ -35,6 +36,11 @@ _PROBLEMS: dict[type[WoonLensError], tuple[int, str, str]] = {
         404,
         "Account not found",
         "No WoonLens account exists for the authenticated identity.",
+    ),
+    FavouriteNotFoundError: (
+        404,
+        "Favourite not found",
+        "No favourite address reference exists for this account.",
     ),
     InvalidAddressQueryError: (
         422,

@@ -236,6 +236,7 @@ DELETE /api/v1/me
 GET    /api/v1/favourites
 POST   /api/v1/favourites
 DELETE /api/v1/favourites/{id}
+GET    /api/v1/favourites/{id}/address
 
 GET    /api/v1/saved-comparisons
 POST   /api/v1/saved-comparisons

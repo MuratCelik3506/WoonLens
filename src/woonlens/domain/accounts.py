@@ -30,3 +30,16 @@ class Account:
     def __post_init__(self) -> None:
         if self.created_at.tzinfo is None:
             raise ValueError("created_at must be timezone-aware")
+
+
+@dataclass(frozen=True, slots=True)
+class FavouriteAddressReference:
+    """Minimum user-owned recipe for resolving one address again."""
+
+    id: UUID
+    pdok_address_id: UUID
+    created_at: datetime
+
+    def __post_init__(self) -> None:
+        if self.created_at.tzinfo is None:
+            raise ValueError("created_at must be timezone-aware")

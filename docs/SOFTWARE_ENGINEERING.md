@@ -378,7 +378,12 @@ and enforces owner-scoped access. PostgreSQL stores only the account identity
 mapping, explicit favourite address UUIDs, and named ordered comparison recipes.
 
 The implemented account foundation uses an Alembic-managed PostgreSQL account
-table with a unique OIDC issuer/subject pair. The Next.js BFF performs
+table with a unique OIDC issuer/subject pair. Favourite-address persistence
+extends that boundary with an
+owner-scoped opaque PDOK UUID only. Listing never exposes the owner identity,
+duplicate saves are idempotent, deletion is owner-scoped, and reopening calls
+the live address adapter instead of reading a stored label or property fact.
+The Next.js BFF performs
 Authorization Code + PKCE and stores short-lived credentials encrypted with
 AES-256-GCM in Redis behind hashed opaque handles. FastAPI validates the
 asymmetric JWT signature, issuer, audience, lifetime, and required scope before

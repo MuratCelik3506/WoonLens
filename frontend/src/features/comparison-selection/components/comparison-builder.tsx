@@ -5,6 +5,10 @@ import { useId, useRef, useState } from "react";
 
 import { searchAddresses } from "@/features/address-search/api/address-suggestions";
 import type { AddressSuggestion } from "@/features/address-search/model/address-suggestion";
+import {
+  FavouritesPanel,
+  useFavourites,
+} from "@/features/favourites/components/favourites-panel";
 import { compareHomes } from "@/features/live-comparison/api/live-comparison";
 import { ComparisonResults } from "@/features/live-comparison/components/comparison-results";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
@@ -23,6 +27,7 @@ export function ComparisonBuilder() {
   const comparison = useMutation({
     mutationFn: (addressIds: readonly string[]) => compareHomes(addressIds),
   });
+  const favouriteState = useFavourites(setNotice);
 
   function selectionChanged() {
     comparison.reset();
@@ -85,6 +90,14 @@ export function ComparisonBuilder() {
             onSelect={addHome}
             selectedIds={new Set(selectedHomes.map((home) => home.suggestion.id))}
           />
+          <FavouritesPanel
+            authenticated={favouriteState.authenticated}
+            available={favouriteState.available}
+            favourites={favouriteState.favourites}
+            loading={favouriteState.loading}
+            onAdd={addHome}
+            onRemove={favouriteState.remove}
+          />
           <p aria-live="polite" className="mt-4 min-h-6 text-sm text-muted">
             {notice}
           </p>
@@ -96,6 +109,12 @@ export function ComparisonBuilder() {
           loading={comparison.isPending}
           onCompare={() =>
             comparison.mutate(selectedHomes.map((home) => home.suggestion.id))
+          }
+          onSave={favouriteState.save}
+          savedIds={
+            new Set(
+              favouriteState.favourites.map((favourite) => favourite.pdokAddressId),
+            )
           }
           onRemove={removeHome}
         />
@@ -291,12 +310,16 @@ function ComparisonTray({
   loading,
   onCompare,
   onRemove,
+  onSave,
+  savedIds,
 }: Readonly<{
   error: boolean;
   homes: readonly SelectedHome[];
   loading: boolean;
   onCompare: () => void;
   onRemove: (id: string) => void;
+  onSave: (id: string) => void;
+  savedIds: ReadonlySet<string>;
 }>) {
   const ready = homes.length >= MINIMUM_HOMES && homes.length <= MAXIMUM_HOMES;
 
@@ -322,6 +345,15 @@ function ComparisonTray({
                   <span className="min-w-0 flex-1 text-sm leading-5">
                     {home.suggestion.displayName}
                   </span>
+                  <button
+                    aria-label={`Save ${home.suggestion.displayName} as favourite`}
+                    className="min-h-11 shrink-0 rounded-lg px-2 text-sm font-semibold text-accent hover:bg-accent-soft disabled:opacity-50"
+                    disabled={savedIds.has(home.suggestion.id)}
+                    onClick={() => onSave(home.suggestion.id)}
+                    type="button"
+                  >
+                    {savedIds.has(home.suggestion.id) ? "Saved" : "Save"}
+                  </button>
                   <button
                     aria-label={`Remove ${home.suggestion.displayName}`}
                     className="min-h-11 shrink-0 rounded-lg px-2 text-sm font-semibold text-accent hover:bg-accent-soft"
