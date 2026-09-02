@@ -22,6 +22,10 @@ class FavouriteNotFoundError(WoonLensError):
     code = "favourite_not_found"
 
 
+class SavedComparisonNotFoundError(WoonLensError):
+    code = "saved_comparison_not_found"
+
+
 class InvalidAddressQueryError(WoonLensError):
     code = "invalid_address_query"
 

@@ -383,6 +383,10 @@ extends that boundary with an
 owner-scoped opaque PDOK UUID only. Listing never exposes the owner identity,
 duplicate saves are idempotent, deletion is owner-scoped, and reopening calls
 the live address adapter instead of reading a stored label or property fact.
+Named comparisons retain only a length-limited name and two to five ordered,
+unique PDOK address UUIDs. Rename, run, and delete queries are owner-scoped;
+running a saved recipe calls the existing live comparison service and stores no
+result.
 The Next.js BFF performs
 Authorization Code + PKCE and stores short-lived credentials encrypted with
 AES-256-GCM in Redis behind hashed opaque handles. FastAPI validates the

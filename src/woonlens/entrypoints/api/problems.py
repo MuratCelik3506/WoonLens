@@ -12,6 +12,7 @@ from woonlens.application.errors import (
     InvalidAddressQueryError,
     NeighborhoodContextNotFoundError,
     PropertyDetailsNotFoundError,
+    SavedComparisonNotFoundError,
     SourceAuthenticationError,
     SourceConfigurationError,
     SourceContractError,
@@ -41,6 +42,11 @@ _PROBLEMS: dict[type[WoonLensError], tuple[int, str, str]] = {
         404,
         "Favourite not found",
         "No favourite address reference exists for this account.",
+    ),
+    SavedComparisonNotFoundError: (
+        404,
+        "Saved comparison not found",
+        "No saved comparison exists for this account.",
     ),
     InvalidAddressQueryError: (
         422,

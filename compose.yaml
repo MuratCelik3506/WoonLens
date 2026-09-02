@@ -75,6 +75,7 @@ services:
     volumes:
       - ./src:/app/src:ro
       - ./tests:/app/tests:ro
+      - ./migrations:/app/migrations:ro
     init: true
 
   check:
