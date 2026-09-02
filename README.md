@@ -16,6 +16,19 @@ WoonLens is designed to compare homes and audit their public records. It will
 not hide uncertainty behind a universal score or an opaque AI-generated
 recommendation.
 
+## Screenshots
+
+### Guest comparison workspace
+
+![WoonLens guest comparison workspace](docs/images/woonlens-home.png)
+
+### Source-by-source comparison result
+
+![WoonLens source-by-source comparison result](docs/images/woonlens-comparison.png)
+
+The comparison screenshot uses deterministic sample responses from the browser
+test suite. It contains no personal data or retained live-provider payloads.
+
 ## Planned capabilities
 
 - Compare two or more Dutch residential addresses side by side

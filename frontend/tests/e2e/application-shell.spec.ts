@@ -2,6 +2,9 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 test("renders the guest application shell", async ({ page }) => {
+  if (process.env.CAPTURE_README_SCREENSHOTS === "true") {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+  }
   const response = await page.goto("/");
 
   await expect(page).toHaveTitle(/WoonLens/);
@@ -17,11 +20,20 @@ test("renders the guest application shell", async ({ page }) => {
     }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Compare homes" })).toBeDisabled();
+  if (process.env.CAPTURE_README_SCREENSHOTS === "true") {
+    await page.getByRole("link", { name: "Checking account…" }).waitFor({
+      state: "hidden",
+    });
+    await page.screenshot({ path: "../docs/images/woonlens-home.png" });
+  }
   const accessibility = await new AxeBuilder({ page }).include("main").analyze();
   expect(accessibility.violations).toEqual([]);
 });
 
 test("searches and selects official addresses with the keyboard", async ({ page }) => {
+  if (process.env.CAPTURE_README_SCREENSHOTS === "true") {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+  }
   let mapStyleRequests = 0;
   await page.route("https://tiles.openfreemap.org/styles/positron", async (route) => {
     mapStyleRequests += 1;
@@ -173,9 +185,15 @@ test("searches and selects official addresses with the keyboard", async ({ page 
   const compare = page.getByRole("button", { name: "Compare homes" });
   await expect(compare).toBeEnabled();
   await compare.click();
-  await expect(
-    page.getByRole("heading", { name: "Factual differences, source by source" }),
-  ).toBeVisible();
+  const resultHeading = page.getByRole("heading", {
+    name: "Factual differences, source by source",
+  });
+  await expect(resultHeading).toBeVisible();
+  if (process.env.CAPTURE_README_SCREENSHOTS === "true") {
+    await resultHeading.scrollIntoViewIfNeeded();
+    await page.evaluate(() => window.scrollBy(0, 220));
+    await page.screenshot({ path: "../docs/images/woonlens-comparison.png" });
+  }
   await expect(page.getByRole("cell", { name: "80 m²" })).toBeVisible();
   await expect(page.getByText("Not reported")).toBeVisible();
   const resultNavigation = page.getByRole("navigation", {
