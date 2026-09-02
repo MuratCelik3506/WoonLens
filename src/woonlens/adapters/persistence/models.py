@@ -43,3 +43,41 @@ class FavouriteAddressReferenceRow(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+
+
+class SavedComparisonRow(Base):
+    __tablename__ = "saved_comparison"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    account_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class SavedComparisonAddressReferenceRow(Base):
+    __tablename__ = "saved_comparison_address_reference"
+    __table_args__ = (
+        UniqueConstraint(
+            "saved_comparison_id",
+            "pdok_address_id",
+            name="uq_saved_comparison_address",
+        ),
+    )
+
+    saved_comparison_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("saved_comparison.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    position: Mapped[int] = mapped_column(primary_key=True)
+    pdok_address_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)

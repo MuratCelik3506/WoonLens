@@ -11,6 +11,7 @@ import {
 } from "@/features/favourites/components/favourites-panel";
 import { compareHomes } from "@/features/live-comparison/api/live-comparison";
 import { ComparisonResults } from "@/features/live-comparison/components/comparison-results";
+import { SavedComparisonsPanel } from "@/features/saved-comparisons/components/saved-comparisons-panel";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 
 const MINIMUM_HOMES = 2;
@@ -59,6 +60,16 @@ export function ComparisonBuilder() {
     setNotice("Home removed from the comparison.");
   }
 
+  function openSavedComparison(addresses: readonly AddressSuggestion[]) {
+    setSelectedHomes(
+      addresses.map((suggestion, index) => ({ number: index + 1, suggestion })),
+    );
+    comparison.reset();
+    setNotice(
+      "Saved addresses reopened with their current official labels. Select Compare homes to fetch current facts.",
+    );
+  }
+
   const labels = new Map(
     selectedHomes.map((home) => [home.suggestion.id, home.suggestion.displayName]),
   );
@@ -97,6 +108,12 @@ export function ComparisonBuilder() {
             loading={favouriteState.loading}
             onAdd={addHome}
             onRemove={favouriteState.remove}
+          />
+          <SavedComparisonsPanel
+            authenticated={favouriteState.authenticated}
+            onNotice={setNotice}
+            onOpen={openSavedComparison}
+            selectedIds={selectedIds}
           />
           <p aria-live="polite" className="mt-4 min-h-6 text-sm text-muted">
             {notice}

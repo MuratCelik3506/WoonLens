@@ -11,6 +11,9 @@ from woonlens.adapters.persistence.database import (
     create_session_factory,
 )
 from woonlens.adapters.persistence.favourites import SqlAlchemyFavouriteRepository
+from woonlens.adapters.persistence.saved_comparisons import (
+    SqlAlchemySavedComparisonRepository,
+)
 from woonlens.adapters.reports.pdf import ReportLabPdfRenderer
 from woonlens.adapters.sources.cbs.client import CbsAdministrativeContextAdapter
 from woonlens.adapters.sources.cbs.statline_client import CbsStatlineIndicatorsAdapter
@@ -34,6 +37,7 @@ from woonlens.application.services.indicators import NeighborhoodIndicatorsServi
 from woonlens.application.services.overview import HomeOverviewService
 from woonlens.application.services.property import PropertyDetailsService
 from woonlens.application.services.reporting import ComparisonEvidenceReportService
+from woonlens.application.services.saved_comparisons import SavedComparisonService
 from woonlens.bootstrap.settings import Settings, get_settings
 from woonlens.entrypoints.api.accounts import router as accounts_router
 from woonlens.entrypoints.api.addresses import router as addresses_router
@@ -42,6 +46,9 @@ from woonlens.entrypoints.api.favourites import router as favourites_router
 from woonlens.entrypoints.api.health import router as health_router
 from woonlens.entrypoints.api.problems import woonlens_error_handler
 from woonlens.entrypoints.api.reports import router as reports_router
+from woonlens.entrypoints.api.saved_comparisons import (
+    router as saved_comparisons_router,
+)
 
 
 def create_app(
@@ -58,6 +65,7 @@ def create_app(
     identity_verifier: AccessTokenVerifier | None = None,
     account_service: AccountService | None = None,
     favourite_service: FavouriteService | None = None,
+    saved_comparison_service: SavedComparisonService | None = None,
 ) -> FastAPI:
     """Create the HTTP application with explicit configuration."""
     resolved_settings = settings or get_settings()
@@ -70,6 +78,8 @@ def create_app(
             app.state.account_service = account_service
             if favourite_service is not None:
                 app.state.favourite_service = favourite_service
+            if saved_comparison_service is not None:
+                app.state.saved_comparison_service = saved_comparison_service
         elif resolved_settings.account_features_enabled:
             database_url = resolved_settings.database_url
             issuer = resolved_settings.oidc_issuer
@@ -153,6 +163,10 @@ def create_app(
                     SqlAlchemyFavouriteRepository(session_factory),
                     app.state.address_service,
                 )
+                app.state.saved_comparison_service = SavedComparisonService(
+                    account_repository,
+                    SqlAlchemySavedComparisonRepository(session_factory),
+                )
             administrative_adapter = CbsAdministrativeContextAdapter(
                 client,
                 str(resolved_settings.pdok_cbs_neighborhoods_api_url),
@@ -229,6 +243,7 @@ def create_app(
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(accounts_router, prefix="/api/v1")
     app.include_router(favourites_router, prefix="/api/v1")
+    app.include_router(saved_comparisons_router, prefix="/api/v1")
     app.include_router(addresses_router, prefix="/api/v1")
     app.include_router(comparisons_router, prefix="/api/v1")
     app.include_router(reports_router, prefix="/api/v1")

@@ -5,6 +5,7 @@ from woonlens.domain.accounts import (
     Account,
     ExternalIdentity,
     FavouriteAddressReference,
+    SavedComparison,
 )
 
 
@@ -30,3 +31,21 @@ class FavouriteRepository(Protocol):
     ) -> FavouriteAddressReference: ...
 
     async def delete_for_owner(self, account_id: UUID, favourite_id: UUID) -> bool: ...
+
+
+class SavedComparisonRepository(Protocol):
+    async def list_for_owner(self, account_id: UUID) -> tuple[SavedComparison, ...]: ...
+
+    async def get_for_owner(
+        self, account_id: UUID, comparison_id: UUID
+    ) -> SavedComparison | None: ...
+
+    async def create(
+        self, account_id: UUID, name: str, address_ids: tuple[UUID, ...]
+    ) -> SavedComparison: ...
+
+    async def update_name(
+        self, account_id: UUID, comparison_id: UUID, name: str
+    ) -> SavedComparison | None: ...
+
+    async def delete_for_owner(self, account_id: UUID, comparison_id: UUID) -> bool: ...

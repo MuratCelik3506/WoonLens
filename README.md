@@ -138,6 +138,11 @@ GET  /api/v1/favourites
 POST /api/v1/favourites
 DELETE /api/v1/favourites/{id}
 GET  /api/v1/favourites/{id}/address
+GET  /api/v1/saved-comparisons
+POST /api/v1/saved-comparisons
+PATCH /api/v1/saved-comparisons/{id}
+DELETE /api/v1/saved-comparisons/{id}
+POST /api/v1/saved-comparisons/{id}/run
 ```
 
 The account endpoints require the configured `woonlens:account` bearer scope.
@@ -150,6 +155,10 @@ PDOK address UUID, and its creation timestamp. Reopening a favourite resolves
 the current address through PDOK; display labels and official property facts
 remain request-scoped and are never written to the account database.
 Guest endpoints remain anonymous and unchanged.
+
+Saved comparisons retain only a user-supplied name and two to five ordered,
+opaque PDOK address UUIDs. Opening a list resolves current address labels;
+running it invokes the same live comparison pipeline as the guest journey.
 
 WoonLens uses the current PDOK Location API for search and the PDOK BAG OGC API
 for the selected address detail. Requests and responses are not persisted or
