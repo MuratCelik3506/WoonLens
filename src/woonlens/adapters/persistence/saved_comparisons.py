@@ -64,6 +64,9 @@ class SqlAlchemySavedComparisonRepository:
         )
         async with self._session_factory() as session, session.begin():
             session.add(row)
+            # The child rows carry UUID values rather than ORM relationships, so
+            # make the parent visible to the foreign key before inserting them.
+            await session.flush()
             session.add_all(
                 SavedComparisonAddressReferenceRow(
                     saved_comparison_id=row.id,
