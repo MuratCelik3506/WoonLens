@@ -1,9 +1,14 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 test("renders the guest application shell", async ({ page }) => {
-  await page.goto("/");
+  const response = await page.goto("/");
 
   await expect(page).toHaveTitle(/WoonLens/);
+  expect(response?.headers()["x-content-type-options"]).toBe("nosniff");
+  expect(response?.headers()["x-frame-options"]).toBe("DENY");
+  expect(response?.headers()["permissions-policy"]).toContain("geolocation=()");
+  expect(response?.headers()["content-security-policy"]).toContain("worker-src 'self'");
   await expect(page.getByRole("main")).toBeVisible();
   await expect(
     page.getByRole("heading", {
@@ -12,9 +17,20 @@ test("renders the guest application shell", async ({ page }) => {
     }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Compare homes" })).toBeDisabled();
+  const accessibility = await new AxeBuilder({ page }).include("main").analyze();
+  expect(accessibility.violations).toEqual([]);
 });
 
 test("searches and selects official addresses with the keyboard", async ({ page }) => {
+  let mapStyleRequests = 0;
+  await page.route("https://tiles.openfreemap.org/styles/positron", async (route) => {
+    mapStyleRequests += 1;
+    await route.fulfill({
+      body: JSON.stringify({ layers: [], sources: {}, version: 8 }),
+      contentType: "application/json",
+      status: 200,
+    });
+  });
   await page.route("**/api/addresses/suggest**", async (route) => {
     const query = new URL(route.request().url()).searchParams.get("q");
     const number = query?.includes("40") ? 40 : 120;
@@ -50,6 +66,10 @@ test("searches and selects official addresses with the keyboard", async ({ page 
         homes: request.address_ids.map((addressId, index) => ({
           addressId,
           contextNotes: ["CBS neighbourhood reference year 2024"],
+          coordinates: {
+            latitude: 51.92 + index * 0.01,
+            longitude: 4.48 + index * 0.01,
+          },
           details: [
             {
               facts: [
@@ -75,6 +95,19 @@ test("searches and selects official addresses with the keyboard", async ({ page 
               retrievedAt: "2026-09-01T12:00:00Z",
             },
           ],
+          stations:
+            index === 0
+              ? [
+                  {
+                    coordinates: { latitude: 51.925, longitude: 4.485 },
+                    distanceKm: 1.25,
+                    id: "NL00001",
+                    name: "Rotterdam station",
+                    operator: "LML",
+                    stationType: "background",
+                  },
+                ]
+              : [],
           unavailableReason: null,
           index,
         })),
@@ -145,6 +178,22 @@ test("searches and selects official addresses with the keyboard", async ({ page 
   ).toBeVisible();
   await expect(page.getByRole("cell", { name: "80 m²" })).toBeVisible();
   await expect(page.getByText("Not reported")).toBeVisible();
+  const resultNavigation = page.getByRole("navigation", {
+    name: "Comparison result sections",
+  });
+  await expect(resultNavigation.getByRole("link", { name: "Map" })).toHaveAttribute(
+    "href",
+    "#spatial-context",
+  );
+  const spatial = page.getByRole("region", { name: "Spatial context" });
+  await expect(spatial).toContainText("Rotterdam station, LML, 1.25 km from Home 1");
+  expect(mapStyleRequests).toBe(0);
+  await spatial.getByRole("button", { name: "Show interactive map" }).click();
+  await expect(spatial.getByLabel("Interactive spatial context map")).toBeVisible();
+  await expect.poll(() => mapStyleRequests).toBe(1);
+  await expect(
+    spatial.getByRole("img", { name: /Home 1: Westblaak 120/i }),
+  ).toBeVisible();
   const details = page.getByRole("region", { name: "Official details by home" });
   await details.getByText(/Home 1 · Westblaak 120/i).click();
   await expect(
@@ -161,6 +210,13 @@ test("searches and selects official addresses with the keyboard", async ({ page 
   await expect(audits).toContainText("not a register error");
   await audits.getByText("Compared source fields").click();
   await expect(audits.getByText("area.definition.v1")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  const accessibility = await new AxeBuilder({ page }).include("main").analyze();
+  expect(accessibility.violations).toEqual([]);
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download JSON" }).click();
   const download = await downloadPromise;
@@ -177,6 +233,9 @@ test("searches and selects official addresses with the keyboard", async ({ page 
   ).not.toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Official details by home" }),
+  ).not.toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Spatial context" }),
   ).not.toBeVisible();
   await expect(page.getByRole("button", { name: "Download JSON" })).not.toBeVisible();
 });

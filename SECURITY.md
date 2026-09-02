@@ -38,6 +38,16 @@ If a real credential is committed or posted:
 Never include a real secret in an issue, pull request, screenshot, fixture,
 example response, or generated report.
 
+## Browser boundary
+
+The frontend sends restrictive content-security, framing, MIME-sniffing,
+referrer, and browser-permission headers. MapLibre workers are copied from the
+pinned npm dependency and served from the WoonLens origin. The content-security
+policy permits map connections only to the documented OpenFreeMap tile host;
+camera, microphone, and geolocation access are disabled. The map uses official
+address coordinates already present in the transient comparison and does not
+request browser geolocation.
+
 ## Supported versions
 
 There are no supported releases yet. This section will be updated when the

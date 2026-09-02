@@ -11,6 +11,7 @@ function home(addressId: string, number: string) {
     overview: {
       address: {
         city: "Rotterdam",
+        coordinates: { latitude: 51.917, longitude: 4.477 },
         house_letter: null,
         house_number: number,
         house_number_suffix: null,

@@ -63,9 +63,10 @@ function comparison(
         values: [1990, null],
       },
     ],
-    homes: [first, second].map((item) => ({
+    homes: [first, second].map((item, index) => ({
       addressId: item.id,
       contextNotes: [],
+      coordinates: { latitude: 52.08 + index * 0.01, longitude: 4.31 + index * 0.01 },
       details: [
         {
           facts: [
@@ -88,6 +89,19 @@ function comparison(
           retrievedAt: "2026-09-01T12:00:00Z",
         },
       ],
+      stations:
+        index === 0
+          ? [
+              {
+                coordinates: { latitude: 52.09, longitude: 4.32 },
+                distanceKm: 1.25,
+                id: "NL00001",
+                name: "Den Haag station",
+                operator: "LML",
+                stationType: "background",
+              },
+            ]
+          : [],
       unavailableReason: null,
     })),
     metrics: [
@@ -195,6 +209,16 @@ describe("ComparisonBuilder", () => {
         name: "Factual differences, source by source",
       }),
     ).toBeInTheDocument();
+    const resultNavigation = screen.getByRole("navigation", {
+      name: "Comparison result sections",
+    });
+    expect(within(resultNavigation).getByRole("link", { name: "Map" })).toHaveAttribute(
+      "href",
+      "#spatial-context",
+    );
+    expect(
+      within(resultNavigation).getByRole("link", { name: "Selected homes" }),
+    ).toHaveAttribute("href", "#compare");
     expect(screen.getAllByText("80 m²").length).toBeGreaterThan(0);
     expect(screen.getByText("Not reported")).toBeInTheDocument();
     expect(
@@ -208,6 +232,15 @@ describe("ComparisonBuilder", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Definition difference")).toBeInTheDocument();
     expect(screen.getByText("Not available from the source")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Spatial context" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Den Haag station, LML, 1.25 km from Home 1/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Show interactive map" }),
+    ).toHaveAttribute("aria-expanded", "false");
     expect(
       screen.getByRole("heading", { name: "Official details by home" }),
     ).toBeInTheDocument();
@@ -237,6 +270,47 @@ describe("ComparisonBuilder", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "Official details by home" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Spatial context" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an honest loading state and prevents duplicate comparison submissions", async () => {
+    renderBuilder();
+    const first = suggestion(1);
+    const second = suggestion(2);
+    fireEvent.click(await searchFor("Examplelaan 1", first));
+    fireEvent.click(await searchFor("Examplelaan 2", second));
+    let finish: (value: LiveComparison) => void = () => undefined;
+    mockedComparison.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+
+    const submit = screen.getByRole("button", { name: "Compare homes" });
+    fireEvent.click(submit);
+    expect(
+      await screen.findByRole("heading", {
+        name: "Gathering the current official evidence",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Comparing live data…" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Comparing live data…" }));
+    expect(mockedComparison).toHaveBeenCalledTimes(1);
+
+    finish(comparison(first, second));
+    expect(
+      await screen.findByRole("heading", {
+        name: "Factual differences, source by source",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: "Gathering the current official evidence",
+      }),
     ).not.toBeInTheDocument();
   });
 

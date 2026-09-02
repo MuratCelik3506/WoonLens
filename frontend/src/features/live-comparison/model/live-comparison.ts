@@ -5,6 +5,20 @@ export type SourceMetadata = Readonly<{
   retrievedAt: string;
 }>;
 
+export type SpatialCoordinates = Readonly<{
+  latitude: number;
+  longitude: number;
+}>;
+
+export type MonitoringStationLocation = Readonly<{
+  coordinates: SpatialCoordinates;
+  distanceKm: number;
+  id: string;
+  name: string;
+  operator: string;
+  stationType: string;
+}>;
+
 export type HomeDetailFact = Readonly<{
   label: string;
   value: number | string | readonly string[] | null;
@@ -21,9 +35,11 @@ export type HomeDetailSection = Readonly<{
 export type ComparedHome = Readonly<{
   addressId: string;
   contextNotes: readonly string[];
+  coordinates: SpatialCoordinates | null;
   details: readonly HomeDetailSection[];
   displayName: string | null;
   sources: readonly SourceMetadata[];
+  stations: readonly MonitoringStationLocation[];
   unavailableReason: string | null;
 }>;
 
@@ -118,6 +134,60 @@ function list(value: unknown, label: string): readonly unknown[] {
 
 function optionalRecord(value: unknown, label: string): Record<string, unknown> | null {
   return value === null || value === undefined ? null : record(value, label);
+}
+
+function coordinates(value: unknown, label: string): SpatialCoordinates {
+  const item = record(value, label);
+  if (typeof item.latitude !== "number" || typeof item.longitude !== "number") {
+    throw new TypeError(`${label} must contain numeric latitude and longitude`);
+  }
+  if (
+    item.latitude < -90 ||
+    item.latitude > 90 ||
+    item.longitude < -180 ||
+    item.longitude > 180
+  ) {
+    throw new TypeError(`${label} is outside the supported coordinate range`);
+  }
+  return { latitude: item.latitude, longitude: item.longitude };
+}
+
+function parseStation(value: unknown): MonitoringStationLocation {
+  const station = record(value, "monitoring station");
+  if (
+    typeof station.distance_km !== "number" &&
+    typeof station.distanceKm !== "number"
+  ) {
+    throw new TypeError("station distance must be a number");
+  }
+  return {
+    coordinates: coordinates(station.coordinates, "station coordinates"),
+    distanceKm: (station.distance_km ?? station.distanceKm) as number,
+    id: text(station.id, "station.id"),
+    name: text(station.name, "station.name"),
+    operator: text(station.operator, "station.operator"),
+    stationType: text(
+      station.station_type ?? station.stationType,
+      "station.station_type",
+    ),
+  };
+}
+
+function collectStations(
+  overview: Record<string, unknown>,
+): readonly MonitoringStationLocation[] {
+  const air = optionalRecord(overview.air_quality, "air_quality");
+  if (!air) return [];
+  const unique = new Map<string, MonitoringStationLocation>();
+  for (const item of list(air.observations, "observations")) {
+    const observation = record(item, "observation");
+    const station = parseStation(observation.station);
+    unique.set(
+      `${station.id}:${station.coordinates.longitude}:${station.coordinates.latitude}`,
+      station,
+    );
+  }
+  return [...unique.values()];
 }
 
 function detailValue(value: unknown, label: string): HomeDetailFact["value"] {
@@ -410,6 +480,10 @@ function parseHome(value: unknown): ComparedHome {
       contextNotes: list(home.contextNotes, "home.contextNotes").map((item) =>
         text(item, "context note"),
       ),
+      coordinates:
+        home.coordinates === null || home.coordinates === undefined
+          ? null
+          : coordinates(home.coordinates, "home coordinates"),
       details: list(home.details ?? [], "home.details").map((item) => {
         const section = record(item, "home detail section");
         const level = text(section.level, "detail level") as HomeDetailSection["level"];
@@ -435,6 +509,7 @@ function parseHome(value: unknown): ComparedHome {
       }),
       displayName: nullableText(home.displayName, "home.displayName"),
       sources: list(home.sources, "home.sources").map(parseSource),
+      stations: list(home.stations ?? [], "home.stations").map(parseStation),
       unavailableReason,
     };
   }
@@ -444,9 +519,11 @@ function parseHome(value: unknown): ComparedHome {
     return {
       addressId,
       contextNotes: [],
+      coordinates: null,
       details: [],
       displayName: null,
       sources: [],
+      stations: [],
       unavailableReason,
     };
   }
@@ -468,9 +545,11 @@ function parseHome(value: unknown): ComparedHome {
   return {
     addressId,
     contextNotes: collectContextNotes(overview),
+    coordinates: coordinates(address.coordinates, "address coordinates"),
     details: collectDetails(overview),
     displayName: `${street} ${houseNumber}${houseLetter}${suffix}, ${postalCode} ${city}`,
     sources: collectSources(overview),
+    stations: collectStations(overview),
     unavailableReason,
   };
 }

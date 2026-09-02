@@ -90,8 +90,10 @@ source-attributed JSON or PDF evidence download. Versioned backend rules also
 surface neutral factual differences and cross-source checks without producing a
 score or recommendation. Guests can inspect request-scoped BAG, EP-Online, CBS,
 and monitoring-station detail panels from the same comparison snapshot; opening
-a panel does not trigger another provider request. Official provider responses
-and generated files remain transient, and no comparison database is used.
+a panel does not trigger another provider request. An optional, lazy-loaded map
+shows numbered homes and relevant stations while preserving a complete textual
+alternative. Official provider responses and generated files remain transient,
+and no comparison database is used.
 
 ### Run locally
 

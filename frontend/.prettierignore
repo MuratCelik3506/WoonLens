@@ -2,5 +2,6 @@
 coverage
 node_modules
 playwright-report
+public/maplibre
 test-results
 package-lock.json

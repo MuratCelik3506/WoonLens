@@ -9,7 +9,7 @@ RUN npm ci
 
 FROM dependencies AS development
 COPY --chown=node:node . .
-RUN mkdir -p .next && chown node:node .next
+RUN mkdir -p .next public/maplibre && chown -R node:node .next public
 USER node
 EXPOSE 3000
 CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
@@ -30,6 +30,7 @@ ENV NODE_ENV=production \
     PORT=3000
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+COPY --from=builder --chown=node:node /app/public ./public
 USER node
 EXPOSE 3000
 CMD ["node", "server.js"]

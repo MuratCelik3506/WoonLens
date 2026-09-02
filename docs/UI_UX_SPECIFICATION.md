@@ -231,6 +231,11 @@ The map is supporting context, not the primary comparison mechanism.
   available.
 - Route planning, travel-time scoring, neighbourhood ranking, and drawn
   neighbourhood boundaries are outside the first UI delivery.
+- The interactive map is opt-in and lazy-loaded. Textual home and station
+  identification is rendered before and independently of map code.
+- OpenFreeMap's Positron style supplies the hosted vector-map presentation.
+  Attribution remains visible and MapLibre's worker files are served from the
+  same WoonLens origin for a stricter content-security policy.
 
 ## 8. Responsive Behaviour
 
@@ -383,8 +388,8 @@ The following require later issues or ADRs before implementation:
 
 - Authentication provider and account-data retention/deletion details
 - Exact component library and design-token implementation
-- Production map style and tile-provider terms
+- Whether a future production deployment should self-host OpenFreeMap tiles
+  instead of using its public instance
 - Dutch translation and locale negotiation
 - Analytics, if any, with a privacy review before collection
 - Shareable comparison links and their data-retention model
-

@@ -5,6 +5,7 @@ import type {
 import { DownloadActions } from "@/features/comparison-downloads/components/download-actions";
 import { ExplainableEvidence } from "@/features/live-comparison/components/explainable-evidence";
 import { HomeDetailPanels } from "@/features/live-comparison/components/home-detail-panels";
+import { SpatialContext } from "@/features/map/components/spatial-context";
 
 const sections = [
   {
@@ -93,6 +94,28 @@ export function ComparisonResults({
           </p>
         </div>
 
+        <nav aria-label="Comparison result sections" className="mt-8">
+          <ul className="flex flex-wrap gap-2 text-sm">
+            {[
+              ["Comparison", "#comparison-tables"],
+              ["Map", "#spatial-context"],
+              ["Official details", "#home-details"],
+              ["Explanations", "#explainable-evidence"],
+              ["Sources and limits", "#sources-and-limits"],
+              ["Selected homes", "#compare"],
+            ].map(([label, href]) => (
+              <li key={href}>
+                <a
+                  className="inline-flex min-h-11 items-center rounded-lg border border-border px-4 font-semibold hover:bg-accent-soft"
+                  href={href}
+                >
+                  {label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
         {comparison.homes.some((home) => home.unavailableReason !== null) ? (
           <div
             className="mt-8 rounded-xl border border-border bg-surface p-5"
@@ -114,7 +137,7 @@ export function ComparisonResults({
 
         <DownloadActions addressIds={comparison.homes.map((home) => home.addressId)} />
 
-        <div className="mt-10 space-y-8">
+        <div className="mt-10 scroll-mt-6 space-y-8" id="comparison-tables">
           {sections.map((section) => {
             const metrics = comparison.metrics.filter((metric) =>
               section.keys.includes(metric.key as never),
@@ -129,7 +152,12 @@ export function ComparisonResults({
                   <h3 className="text-xl font-semibold">{section.title}</h3>
                   <p className="mt-1 text-sm text-muted">{section.description}</p>
                 </div>
-                <div className="overflow-x-auto">
+                <div
+                  aria-label={`${section.title} comparison table; scroll horizontally for every selected home`}
+                  className="overflow-x-auto"
+                  role="region"
+                  tabIndex={0}
+                >
                   <table className="min-w-[44rem] w-full border-collapse text-left text-sm">
                     <thead>
                       <tr>
@@ -199,11 +227,16 @@ export function ComparisonResults({
           })}
         </div>
 
+        <SpatialContext comparison={comparison} labels={labels} />
+
         <HomeDetailPanels comparison={comparison} labels={labels} />
 
         <ExplainableEvidence comparison={comparison} labels={labels} />
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <div
+          className="mt-8 grid scroll-mt-6 gap-6 lg:grid-cols-2"
+          id="sources-and-limits"
+        >
           <article className="rounded-xl border border-border bg-surface p-6">
             <h3 className="text-lg font-semibold">Sources used</h3>
             <ul className="mt-4 space-y-4">
