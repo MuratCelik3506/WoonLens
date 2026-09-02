@@ -253,8 +253,13 @@ SavedComparison
 SavedComparisonAddressReference
 ```
 
-The exact minimum address-reference schema, authentication method, consent,
-retention, and deletion rules require decisions before account implementation.
+The account boundary is defined in
+[`ADR 0010`](adr/0010-oidc-bff-and-minimal-account-data.md): authentication is
+provider-neutral OIDC through a Next.js BFF; ownership uses an internal account
+UUID mapped from OIDC issuer and subject; and the only saved address field is
+the opaque PDOK address UUID required to rerun the live workflow. Account data
+can be exported and is transactionally removed on deletion, subject to the
+documented encrypted-backup expiry.
 
 The account database must not contain:
 

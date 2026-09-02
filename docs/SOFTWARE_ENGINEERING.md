@@ -370,7 +370,12 @@ inspection verify layout quality that extraction cannot prove.
 PostgreSQL may store optional accounts and minimum user-owned saved-search,
 favourite, and comparison references. Opening a saved item always invokes the
 live provider pipeline. The exact account reference schema, retention, consent,
-and deletion contract require a separate decision before implementation.
+and deletion contract are defined by
+[`ADR 0010`](adr/0010-oidc-bff-and-minimal-account-data.md). Authentication uses
+a provider-neutral OIDC boundary: Next.js acts as a BFF, browser JavaScript
+never receives provider tokens, and FastAPI independently validates credentials
+and enforces owner-scoped access. PostgreSQL stores only the account identity
+mapping, explicit favourite address UUIDs, and named ordered comparison recipes.
 
 ## 7. Testing Strategy
 
@@ -423,19 +428,19 @@ WoonLens enforces automated local and pull-request quality gates. Tool choices,
 security constraints, and suppression rules are recorded in
 [`ADR 0007`](adr/0007-automated-quality-gates.md).
 
-| Concern | Tool |
-| --- | --- |
-| Format and Python lint | Ruff |
-| Strict static typing | mypy |
-| Architecture boundaries | import-linter |
-| Tests and branch coverage | pytest and pytest-cov |
-| Dependency vulnerabilities | pip-audit |
-| Secret detection | gitleaks |
-| Dockerfile quality | hadolint |
-| GitHub Actions validity | actionlint |
-| Markdown consistency | markdownlint |
-| Fast local checks | pre-commit |
-| Dependency update proposals | Dependabot |
+| Concern                     | Tool                  |
+| --------------------------- | --------------------- |
+| Format and Python lint      | Ruff                  |
+| Strict static typing        | mypy                  |
+| Architecture boundaries     | import-linter         |
+| Tests and branch coverage   | pytest and pytest-cov |
+| Dependency vulnerabilities  | pip-audit             |
+| Secret detection            | gitleaks              |
+| Dockerfile quality          | hadolint              |
+| GitHub Actions validity     | actionlint            |
+| Markdown consistency        | markdownlint          |
+| Fast local checks           | pre-commit            |
+| Dependency update proposals | Dependabot            |
 
 ### Required pull-request checks
 
