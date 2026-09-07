@@ -2,7 +2,7 @@
 
 > Privacy-first Dutch housing comparison tool built on live official public data.
 
-[![Release](https://img.shields.io/badge/release-v1.0.0--rc-informational)](#development-status)
+[![Release](https://img.shields.io/badge/release-v1.0.0-informational)](#development-status)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ## Why WoonLens?
