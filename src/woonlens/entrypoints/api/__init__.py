@@ -241,7 +241,7 @@ def create_app(
 
     app = FastAPI(
         title="WoonLens API",
-        version="0.1.0",
+        version="1.0.0",
         docs_url="/docs" if resolved_settings.environment != "production" else None,
         redoc_url=None,
         lifespan=lifespan,

@@ -2,7 +2,7 @@
 
 > Privacy-first Dutch housing comparison tool built on live official public data.
 
-[![Status](https://img.shields.io/badge/status-release%20readiness-informational)](#development-status)
+[![Release](https://img.shields.io/badge/release-v1.0.0--rc-informational)](#development-status)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ## Why WoonLens?
@@ -225,11 +225,12 @@ The PDF endpoint uses the same evidence contract to produce a readable,
 multi-page A4 document with ordered homes, comparison tables, interpretations,
 audits, unavailable-data warnings, sources, limitations, and page numbers.
 
-The guest live-comparison and optional account-organisation MVPs are implemented
-for local Docker use. The repository is now in release-readiness work: the next
-focus is production-oriented integration testing, automated security checks,
-deployment decisions, and a first versioned release. Work is tracked through
-GitHub Issues and delivered with one branch and pull request per task.
+The guest live-comparison and optional account-organisation MVPs are complete
+for local Docker use. Version 1.0.0 is the first supported local release; it is
+not a hosted production service or an availability commitment. Future work can
+strengthen production deployment, security automation, and integration testing
+without expanding the completed MVP boundary. Work is tracked through GitHub
+Issues and delivered with one branch and pull request per task.
 
 The detailed MVP boundaries, delivery phases, quality requirements, and GitHub
 work structure are defined in the [project scope](docs/PROJECT_SCOPE.md).
@@ -262,10 +263,13 @@ separately before data ingestion is released.
 
 ## Roadmap
 
-1. Add PostgreSQL migration, ownership, cascade, and lifecycle integration tests.
-2. Add dependency, secret, and container-image security checks to CI.
-3. Select and document the production hosting and OIDC deployment profile.
-4. Verify source terms, operational recovery, and production smoke checks.
-5. Publish the first changelog, version tag, and reproducible release.
+Version 1.0.0 completes the local-first MVP. Potential work after this release:
+
+1. Select and document a production hosting and OIDC deployment profile.
+2. Expand PostgreSQL and browser integration coverage.
+3. Add dependency, secret, and container-image security automation.
+4. Add hosted-service backup, recovery, monitoring, and release automation.
+
+These are production-hardening opportunities, not unfinished v1.0.0 features.
 
 Contributions follow the workflow in [CONTRIBUTING.md](CONTRIBUTING.md).

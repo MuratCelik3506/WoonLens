@@ -90,9 +90,9 @@ export function AppShell({
             Built for explainable comparison
           </h2>
           <p className="mt-4 max-w-3xl leading-7 text-muted">
-            Every future result will distinguish property records, neighbourhood
-            context, and monitoring-station observations. Missing data will never be
-            treated as a verdict about a home.
+            Every result distinguishes property records, neighbourhood context, and
+            monitoring-station observations. Missing data is never treated as a verdict
+            about a home.
           </p>
           <div className="mt-8">{systemStatus}</div>
         </section>

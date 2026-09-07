@@ -2,10 +2,10 @@
 
 ## Project status
 
-WoonLens is currently in early development and has no supported production
-release. Security-sensitive findings are still important, especially those
-involving credentials, data redistribution, request logging, or generated
-reports.
+WoonLens 1.0.x is the supported local Docker release line. It is not currently
+offered as a hosted production service. Security-sensitive findings are
+important, especially those involving credentials, account ownership, data
+redistribution, request logging, or generated reports.
 
 ## Reporting a vulnerability
 
@@ -80,5 +80,10 @@ not disclose token-validation details.
 
 ## Supported versions
 
-There are no supported releases yet. This section will be updated when the
-first tagged version is published.
+| Version | Supported |
+| ------- | --------- |
+| 1.0.x   | Yes       |
+| < 1.0   | No        |
+
+Security fixes target the latest 1.0.x release. The local Docker profile uses
+synthetic credentials and does not define a public-service SLA.
