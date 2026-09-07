@@ -1,6 +1,6 @@
 # Third-Party Data Licensing and Usage
 
-**Last reviewed:** 2026-08-28
+**Last reviewed:** 2026-09-08
 
 This document separates the license for WoonLens source code from the terms
 that apply to external datasets and services. It is a project compliance note,
@@ -119,8 +119,8 @@ WoonLens must therefore treat RIVM data conservatively:
 - OpenFreeMap requires attribution and identifies its software project as MIT;
   its map data comes from OpenStreetMap and its styles/schema incorporate
   OpenMapTiles components with their own notices.
-- The interface displays `Map © OpenFreeMap · © OpenMapTiles · data ©
-  OpenStreetMap contributors` alongside MapLibre's map attribution.
+- The interface attribution names OpenFreeMap, OpenMapTiles, and OpenStreetMap
+  contributors alongside MapLibre's map attribution.
 - The public OpenFreeMap instance requires no account, cookie, or API key and
   offers no SLA. Its published privacy policy says ordinary logs are anonymized
   without IP addresses, while temporary IP logging may be enabled for security
@@ -164,3 +164,9 @@ Every normalized value and generated report should preserve, where available:
 Terms and service behavior can change. Review this document before the first
 public release and whenever a new dataset, endpoint, bulk download, hosted
 demo, or redistribution feature is introduced.
+
+The v1.0.0 review reconfirmed the official PDOK metadata-first licensing rule,
+CBS CC BY 4.0 attribution requirement, EP-Online personal API-key and bounded
+redistribution conditions, and the absence of one blanket license for every
+RIVM Luchtmeetnet file. The existing request-scoped use and conservative
+attribution policy remain appropriate for the local release.

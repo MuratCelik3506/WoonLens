@@ -12,6 +12,8 @@ contracts for WoonLens.
 | [`UI_UX_SPECIFICATION.md`](UI_UX_SPECIFICATION.md) | Guest-first interaction, responsive presentation, neutrality, provenance, accessibility, and frontend UI contract |
 | [`../PROJECT_PROPOSAL.md`](../PROJECT_PROPOSAL.md) | Product problem, audience, differentiation, and high-level direction                                              |
 | [`../README.md`](../README.md)                     | Repository overview and entry point                                                                               |
+| [`../CHANGELOG.md`](../CHANGELOG.md)               | Versioned user-visible changes, security notes, and known limitations                                             |
+| [`releases/v1.0.0.md`](releases/v1.0.0.md)         | WoonLens v1.0.0 scope, verification evidence, and release procedure                                               |
 
 ## Data Sources
 
