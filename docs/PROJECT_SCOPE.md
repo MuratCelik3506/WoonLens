@@ -247,30 +247,32 @@ test fixtures, and failure-handling rules.
 
 ### Backend
 
-The planned backend uses Python, FastAPI, Pydantic, and Pytest. It is
+The implemented backend uses Python, FastAPI, Pydantic, and Pytest. It is
 responsible for source clients, response validation, request-scoped
 normalization, comparisons, downloads, account features, and health checks.
 
 ### Data Storage
 
-PostgreSQL is planned only for optional accounts and minimum saved-search,
-favourite, and comparison references. Provider payloads, normalized property
-facts, comparison results, and generated reports are explicitly excluded. The
-first vertical slice does not require a database.
+PostgreSQL stores only optional accounts and minimum favourite and saved-
+comparison references. Provider payloads, normalized property facts,
+comparison results, and generated reports are explicitly excluded. Guest use
+does not require the account database.
 
 ### Frontend
 
-The planned frontend uses TypeScript, Next.js, and MapLibre. It is responsible
+The implemented frontend uses TypeScript, Next.js, and MapLibre. It is responsible
 for address selection, side-by-side comparison, source disclosures, warning
 presentation, map context, and report downloads.
 
-The frontend will be implemented only after the command-line vertical slice
-proves the source and normalization workflow.
+The frontend uses the proven source and normalization workflow through the
+FastAPI boundary and keeps the complete guest journey available without login.
 
 ### Operations
 
-The planned operational foundation consists of Docker Compose, GitHub Actions,
-structured logs, automated tests, and health checks.
+The operational foundation consists of Docker Compose, GitHub Actions,
+structured logs, automated tests, and health checks. Production hosting,
+security scanning, backup verification, and release automation remain
+release-readiness work.
 
 ## 9. Security and Privacy Scope
 
