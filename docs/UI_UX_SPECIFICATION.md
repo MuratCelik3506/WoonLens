@@ -205,16 +205,16 @@ Each provider-backed region manages its own state. One slow or failed provider
 must not hide facts already available from another provider or collapse the
 entire comparison page.
 
-| State | User-facing treatment |
-| --- | --- |
-| Loading | A stable placeholder and provider-specific progress text |
-| Record found | Value plus source-detail access |
-| No record found | `No record found` and the provider name |
-| Temporarily unavailable | `Currently unavailable`, a short explanation, and a provider-specific retry action |
-| Unsupported/not comparable | Explanation of the definition or scope mismatch |
-| Stale | Value remains qualified by its reference date and stale status |
-| Provisional | Value remains qualified as provisional |
-| Partial comparison | Available homes and providers remain usable; missing portions are identified |
+| State                      | User-facing treatment                                                              |
+| -------------------------- | ---------------------------------------------------------------------------------- |
+| Loading                    | A stable placeholder and provider-specific progress text                           |
+| Record found               | Value plus source-detail access                                                    |
+| No record found            | `No record found` and the provider name                                            |
+| Temporarily unavailable    | `Currently unavailable`, a short explanation, and a provider-specific retry action |
+| Unsupported/not comparable | Explanation of the definition or scope mismatch                                    |
+| Stale                      | Value remains qualified by its reference date and stale status                     |
+| Provisional                | Value remains qualified as provisional                                             |
+| Partial comparison         | Available homes and providers remain usable; missing portions are identified       |
 
 Technical stack traces, request headers, credentials, signed URLs, raw provider
 payloads, and internal exception names are never displayed. A retry repeats the
@@ -316,11 +316,12 @@ Dutch can be introduced without rewriting feature components.
 Guest use is the default. The UI must not introduce an authentication wall,
 forced registration dialog, automatic search history, or consent-by-use claim.
 
-If accounts are later implemented, they may organize only explicit user-owned
-address references, favourites, and named comparison lists. Opening a saved
-item runs the live provider pipeline again. The interface must not imply that
-official property facts, comparison results, environmental observations, or
-generated reports were stored in the account.
+Optional accounts organize only explicit user-owned address references,
+favourites, and named comparison lists. Opening a saved item runs the live
+provider pipeline again. Account export and deletion controls are explicit,
+while the interface never implies that official property facts, comparison
+results, environmental observations, or generated reports were stored in the
+account.
 
 JSON and PDF are generated for the active comparison and clearly display their
 generation/retrieval time. WoonLens does not retain the generated download on
@@ -328,7 +329,7 @@ the server.
 
 ## 13. Frontend Architecture Direction
 
-The planned frontend remains part of the WoonLens modular monolith deployment;
+The frontend remains part of the WoonLens modular monolith deployment;
 it does not introduce independent business microservices.
 
 - **Next.js and TypeScript** for the web application and typed public contracts

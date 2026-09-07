@@ -2,7 +2,7 @@
 
 > Privacy-first Dutch housing comparison tool built on live official public data.
 
-[![Status](https://img.shields.io/badge/status-foundation-informational)](#development-status)
+[![Status](https://img.shields.io/badge/status-release%20readiness-informational)](#development-status)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ## Why WoonLens?
@@ -29,7 +29,7 @@ recommendation.
 The comparison screenshot uses deterministic sample responses from the browser
 test suite. It contains no personal data or retained live-provider payloads.
 
-## Planned capabilities
+## Implemented capabilities
 
 - Compare two or more Dutch residential addresses side by side
 - Resolve addresses and official identifiers through PDOK and BAG
@@ -56,17 +56,17 @@ test suite. It contains no personal data or retained live-provider payloads.
 5. **Optional identity** — comparison works without an account; accounts store
    only user-owned search organisation data, never provider facts.
 
-## Initial data sources
+## Integrated data sources
 
-| Source | Planned use |
-| --- | --- |
-| [PDOK Location API](https://www.pdok.nl/location-api1) | Address search and links to official BAG address records |
-| [Kadaster BAG](https://api.pdok.nl/kadaster/bag/ogc/v2/api?f=html) | Building and residential-unit records |
-| [EP-Online](https://public.ep-online.nl/swagger/index.html) | Registered energy-performance data |
-| [CBS Open Data](https://www.cbs.nl/en-gb/our-services/open-data) | Neighbourhood and housing statistics |
-| [RIVM Luchtmeetnet](https://data.rivm.nl/data/luchtmeetnet/) | Environmental measurements and context |
+| Source                                                             | Current use                                              |
+| ------------------------------------------------------------------ | -------------------------------------------------------- |
+| [PDOK Location API](https://www.pdok.nl/location-api1)             | Address search and links to official BAG address records |
+| [Kadaster BAG](https://api.pdok.nl/kadaster/bag/ogc/v2/api?f=html) | Building and residential-unit records                    |
+| [EP-Online](https://public.ep-online.nl/swagger/index.html)        | Registered energy-performance data                       |
+| [CBS Open Data](https://www.cbs.nl/en-gb/our-services/open-data)   | Neighbourhood and housing statistics                     |
+| [RIVM Luchtmeetnet](https://data.rivm.nl/data/luchtmeetnet/)       | Environmental measurements and context                   |
 
-## Architecture direction
+## Architecture
 
 ```text
 Address input
@@ -78,11 +78,10 @@ Address input
     -> optional JSON/PDF download
 ```
 
-The proposed implementation uses Python and FastAPI for the backend, PostgreSQL
-for optional accounts and saved-search references, and TypeScript with Next.js
-for the web interface. Provider payloads and derived property facts are not
-stored in PostgreSQL. These choices remain subject to validation during the
-first vertical slice.
+The implementation uses Python and FastAPI for the backend, PostgreSQL for
+optional accounts and minimum saved references, Redis for encrypted short-lived
+session state, and TypeScript with Next.js for the web interface. Provider
+payloads and derived property facts are not stored in PostgreSQL.
 
 ## Scope boundaries
 
@@ -226,10 +225,11 @@ The PDF endpoint uses the same evidence contract to produce a readable,
 multi-page A4 document with ordered homes, comparison tables, interpretations,
 audits, unavailable-data warnings, sources, limitations, and page numbers.
 
-The project is currently in the Guest Live Comparison foundation phase. The
-backend runtime and its first official-data integrations are implemented; the
-user interface has not been released yet. Work is tracked through GitHub
-Issues and delivered with one branch and pull request per task.
+The guest live-comparison and optional account-organisation MVPs are implemented
+for local Docker use. The repository is now in release-readiness work: the next
+focus is production-oriented integration testing, automated security checks,
+deployment decisions, and a first versioned release. Work is tracked through
+GitHub Issues and delivered with one branch and pull request per task.
 
 The detailed MVP boundaries, delivery phases, quality requirements, and GitHub
 work structure are defined in the [project scope](docs/PROJECT_SCOPE.md).
@@ -248,10 +248,10 @@ The complete document set is listed in the
 
 ## Security and credentials
 
-Copy `.env.example` to `.env` for local overrides. The current foundation needs
-no provider credentials. Never commit API keys, tokens, downloaded bulk
-datasets, or signed URLs; credential setup will be documented with the first
-integration that requires it.
+Copy `.env.example` to `.env` for local overrides. Most public sources need no
+credential; EP-Online energy registration requires a personal server-side API
+key and degrades explicitly when it is absent. Never commit API keys, tokens,
+downloaded bulk datasets, or signed URLs.
 
 ## Licensing
 
@@ -262,12 +262,10 @@ separately before data ingestion is released.
 
 ## Roadmap
 
-1. Complete the Docker-first backend and quality-gate foundation.
-2. Build a tested address-resolution vertical slice for one Dutch address.
-3. Normalize and compare live responses from the first official data sources.
-4. Implement explainable cross-register validation rules.
-5. Generate source-attributed JSON and PDF downloads without server retention.
-6. Add the local web interface, maps, automated tests, and release workflow.
+1. Add PostgreSQL migration, ownership, cascade, and lifecycle integration tests.
+2. Add dependency, secret, and container-image security checks to CI.
+3. Select and document the production hosting and OIDC deployment profile.
+4. Verify source terms, operational recovery, and production smoke checks.
+5. Publish the first changelog, version tag, and reproducible release.
 
-Contributions will be welcome once the initial architecture and contribution
-guidelines are merged.
+Contributions follow the workflow in [CONTRIBUTING.md](CONTRIBUTING.md).
